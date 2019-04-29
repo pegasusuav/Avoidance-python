@@ -38,6 +38,40 @@ See Wikipedia article (https://mavlink.io/en/mavgen_python/)
 # / switch mode back to AUTO
 
 
+###################
+# Haversine class #
+###################
+class Haversine:
+    '''
+    use the haversine class to calculate the distance between
+    two lon/lat coordinate pairs.
+    output distance available in kilometers, meters, miles, and feet.
+    example usage: Haversine([lon1,lat1],[lon2,lat2]).feet
+
+    '''
+
+    def __init__(self, coord1, coord2):
+        lon1, lat1 = coord1
+        lon2, lat2 = coord2
+
+        R = 6371000  # radius of Earth in meters
+        phi_1 = math.radians(lat1)
+        phi_2 = math.radians(lat2)
+
+        delta_phi = math.radians(lat2 - lat1)
+        delta_lambda = math.radians(lon2 - lon1)
+
+        a = math.sin(delta_phi / 2.0) ** 2 + \
+            math.cos(phi_1) * math.cos(phi_2) * \
+            math.sin(delta_lambda / 2.0) ** 2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+        self.meters = R * c  # output distance in meters
+        self.km = self.meters / 1000.0  # output distance in kilometers
+        self.miles = self.meters * 0.000621371  # output distance in miles
+        self.feet = self.miles * 5280  # output distance in feet
+
+        
 ######################
 # Mode change module #
 ######################
@@ -92,7 +126,7 @@ def gps_data(the_connection):
         msg = the_connection.recv_match()
         if not msg:
             continue
-        if msg.get_type() == 'GPS_RAW_INT':
+        if msg.get_type() == 'GLOBAL_POSITION_INT':
             # print("\n\n*****Got message: %s*****" % msg.get_type())
             # print("Message: %s" % msg)
             # print("\nAs dictionary: %s" % msg.to_dict())
@@ -143,11 +177,11 @@ def flyto(go_lat, go_lon, the_connection):
     return
 
 
-# FIXME: Check waypoint reached function (distance between go_lat,lon and cur_lat,lon <=1)
+# Check guided waypoint reached function
 def wp_reached(go_lat, go_lon, the_connection):
     while True:
         cur_lat, cur_lon = gps_data(the_connection)
-        distance = Haversine((cur_lat, cur_lon), (go_lat, go_lon)).meters
+        distance = Haversine((cur_lon, cur_lat), (go_lon, go_lat)).meters
         print(distance)
         # time.sleep(1)
         if not distance <= 4:  # FIXME: <------- wp_reached offset
@@ -182,12 +216,11 @@ def update_obs():
 def obstacle_dis(obs_lat, obs_lon, obs_rad, the_connection):
     while True:    
         cur_lat, cur_lon = gps_data(the_connection)  # Check current position
-        # TODO: distance still have bug
         # Check distance between current position and obstacle (minus obstacle radius to make obstacle shield)
-        distance = Haversine((cur_lat, cur_lon), (obs_lat, obs_lon)).meters - obs_rad
+        distance = Haversine((cur_lon, cur_lat), (obs_lon, obs_lat)).meters
         print('Obstacle distance = %f' % distance)
-        time.sleep(1)
-        if distance <= 40:  # FIXME: <------- obstacle distance offset
+        # time.sleep(0.5)
+        if distance <= 40 + obs_rad:  # FIXME: <------- obstacle distance offset
             return
 
 
@@ -212,40 +245,6 @@ def get_wp(the_connection):
             return wp_lat, wp_lon
 
 
-###################
-# Haversine class #
-###################
-class Haversine:
-    '''
-    use the haversine class to calculate the distance between
-    two lon/lat coordinate pairs.
-    output distance available in kilometers, meters, miles, and feet.
-    example usage: Haversine([lon1,lat1],[lon2,lat2]).feet
-
-    '''
-
-    def __init__(self, coord1, coord2):
-        lon1, lat1 = coord1
-        lon2, lat2 = coord2
-
-        R = 6371000  # radius of Earth in meters
-        phi_1 = math.radians(lat1)
-        phi_2 = math.radians(lat2)
-
-        delta_phi = math.radians(lat2 - lat1)
-        delta_lambda = math.radians(lon2 - lon1)
-
-        a = math.sin(delta_phi / 2.0) ** 2 + \
-            math.cos(phi_1) * math.cos(phi_2) * \
-            math.sin(delta_lambda / 2.0) ** 2
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-
-        self.meters = R * c  # output distance in meters
-        self.km = self.meters / 1000.0  # output distance in kilometers
-        self.miles = self.meters * 0.000621371  # output distance in miles
-        self.feet = self.miles * 5280  # output distance in feet
-
-
 # ------------------------------------------------------------------------------------------------------------------- #
 def main():
     # Start a connection listening to a UDP port
@@ -262,14 +261,13 @@ def main():
         ref_lat, ref_lon = gps_data(the_connection)  # Update last position
         wp_lat, wp_lon = get_wp(the_connection)  # Update last waypoint
         # Run the algorithm
-        total_point = avd_algorithm.begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad)
+        # total_point = avd_algorithm.begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad)
+        total_point = avd_algorithm.testing()
         obstacle_dis(obs_lat, obs_lon, obs_rad, the_connection)  # Check obstacle distance
         # If obstacle distance is below 40 meters the guiding procedure will begin
         print("Obstacle in range\nBegin obstacle avoidance")
         print("----> Done change %s mode\n" % change_mode('GUIDED', the_connection))  # Change mode to GUIDED
-        print("\nStart path planning\n\n")
         select_row = 1
-        print("Planning done")
         while select_row <= total_point:
             print("Guiding...")
             go_lat, go_lon, select_row = get_guided_wp(select_row)  # Fly to new waypoint in sequence
