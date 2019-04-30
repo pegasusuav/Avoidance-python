@@ -340,6 +340,9 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad):
 # --------------------------------------------------------------------------------------------
 
 
+# Github sync testing
+
+
 #  TODO: Remove this definition after finished no algorithm testing
 def testing():
     total_point = 2
