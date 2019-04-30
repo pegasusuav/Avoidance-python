@@ -279,6 +279,12 @@ def write_wp(s_row):
         return
 
 
+#  Manual plot testing function
+def testing():
+    total_point = 2
+    return total_point
+
+
 # All input
 def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad):
     # start and goal position
@@ -338,15 +344,6 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad):
         plt.plot(gx, gy, "xb")
         plt.show()
 # --------------------------------------------------------------------------------------------
-
-
-# Github sync testing
-
-
-#  TODO: Remove this definition after finished no algorithm testing
-def testing():
-    total_point = 2
-    return total_point
 
 
 if __name__ == '__main__':
