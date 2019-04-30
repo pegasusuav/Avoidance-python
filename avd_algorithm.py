@@ -4,6 +4,7 @@
 import matplotlib.pyplot as plt
 import math
 import csv
+import numpy as np
 
 """
 Created on Thu Apr 25 10:30:42 2019
@@ -259,22 +260,24 @@ def get_motion_model():
 
 # TODO: Write wp function and make it count point number quantity
 def write_wp(num,lat,lon):
-    row = [str(num), str(lat), str(lon)]
+    head = [["No.", "Lat", "Lon"]]
+    row = [[str(num), str(lat), str(lon)]]
+    if int(num) == 1:
+        with open('new_point.csv', 'w', newline = '') as writeFile:
+            writer = csv.writer(writeFile)
+            writer.writerows(head)
+            writer.writerows(row)
+    else:
+        with open('new_point.csv', 'a', newline = '') as writeFile:
+            writer = csv.writer(writeFile)
+            writer.writerows(row)
 
-    with open('new_point_test.csv', 'r') as readFile:
-        reader = csv.reader(readFile)
-        lines = list(reader)
-        lines[int(num)] = row
-
-    with open('new_point_test.csv', 'w', newline = '') as writeFile:
-        writer = csv.writer(writeFile)
-        writer.writerows(lines)
-
-    readFile.close()
     writeFile.close()
 
 
-#  Manual plot testing function
+# Count total point quantity
+
+# Manual plot testing function
 def testing():
     total_point = 2
     return total_point
@@ -283,17 +286,17 @@ def testing():
 # All input
 def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad):
     # start and goal position
-    sx = (ref_lat+76.4354)*10000  # [m] current positions
-    sy = (ref_lon-38.1405)*10000  # [m]
-    gx = (wp_lat+76.4354)*10000  # [m] next waypoints
-    gy = (wp_lon-38.1405)*10000   # [m]
-    grid_size = 9  # [m]
+    sx = ((ref_lon/10000000)+76.4354)*10000  # [m] current positions
+    sy = ((ref_lat/10000000)-38.1405)*10000  # [m]
+    gx = ((wp_lon/10000000)+76.4354)*10000  # [m] next waypoints
+    gy = ((wp_lat/10000000)-38.1405)*10000   # [m]
+    grid_size = 5  # [m]
     robot_size = 3.0  # [m]
 
     ox, oy = [], []
-    r = obs_rad/30.0  # [m] obstacle radius
+    r = obs_rad  # [m] obstacle radius
     steps = 30  # [degrees]
-    (cx, cy) = [(obs_lat+76.4354)*10000, (obs_lon-38.1405)*10000]  # [m] center of obstacle
+    (cx, cy) = [(obs_lon+76.4354)*10000, (obs_lat-38.1405)*10000]  # [m] center of obstacle
     ox.append(cx)
     oy.append(cy)
     for i in range(0, 360, steps):
@@ -319,17 +322,25 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad):
 # ---------------------------------------------------------------------------------------
     if show_animation:  # pragma: no cover
         plt.plot(rx, ry, "-r")
-        prxb = rx[0]
-        pryb = ry[0]
+        prxb = int(rx[0])
+        pryb = int(ry[0])
+        if prxb == wp_lon:
+            if pryb == wp_lat:
+                return
         dx = 0
         dy = 0
+        row_num = 1
         for prx, pry in zip(rx, ry):
             # print("P", prx,pry)
             # print("x", prxb-prx)
             # print("y", pryb-pry)
             if (prxb-prx) != dx or (pryb-pry) != dy:
                 plt.text(prxb, pryb, '({},{})'.format(prxb, pryb))
-                print('%10.4f' % (prxb/10000-76.4354), '%10.4f' % (pryb/10000+38.1405))
+                guided_lat = int((pryb+381405)*10)
+                guided_lon = int((prxb-764354)*10)
+                write_wp(row_num, guided_lat, guided_lon)  # Write CSV file
+                print((pryb+381405)*10, (prxb-764354)*10)
+                row_num += 1
             dx = prxb-prx
             dy = pryb-pry
             prxb = prx
@@ -338,12 +349,16 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad):
         plt.plot(sx, sy, "xr")
         plt.plot(gx, gy, "xb")
         plt.show()
+
 # --------------------------------------------------------------------------------------------
 
 
 if __name__ == '__main__':
-    # begin_avd()
-    while True:
-        start_row = 1
-        write_wp(start_row)
-        start_row += 1
+    ref_lat = 381497980
+    ref_lon = -764280940
+    wp_lat = 381482960
+    wp_lon = -764315630
+    obs_lat = 38.146444
+    obs_lon = -76.429821
+    obs_rad = 35.0
+    begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad)
