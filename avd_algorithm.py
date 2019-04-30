@@ -4,7 +4,7 @@
 import matplotlib.pyplot as plt
 import math
 import csv
-import numpy as np
+import pandas as pd
 
 """
 Created on Thu Apr 25 10:30:42 2019
@@ -225,7 +225,7 @@ def calc_obstacle_map(ox, oy, reso, vr):
     #  print("ywidth:", ywidth)
 
     # obstacle map generation
-    obmap = [[False for i in range(ywidth)] for i in range(xwidth)]  # TODO: Fix local var 'i' not in use
+    obmap = [[False for i in range(ywidth)] for i in range(xwidth)]
     for ix in range(xwidth):
         x = ix + minx
         for iy in range(ywidth):
@@ -258,7 +258,7 @@ def get_motion_model():
     return motion
 
 
-# TODO: Write wp function and make it count point number quantity
+# Write wp function
 def write_wp(num,lat,lon):
     head = [["No.", "Lat", "Lon"]]
     row = [[str(num), str(lat), str(lon)]]
@@ -322,8 +322,8 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad):
 
     # rx, ry = a_star_planning(sx, sy, gx, gy, ox, oy, grid_size, robot_size)
     rx, ry = dijkstra_planning(sx, sy, gx, gy, ox, oy, grid_size, robot_size)
-# TODO: Remove plot process to make the code run faster,
-#  find waypoint printing part
+
+# Remove the comment in the rows that have "plt" in it to observe the plot graph
 # ---------------------------------------------------------------------------------------
     if show_animation:  # pragma: no cover
         # plt.plot(rx, ry, "-r")
@@ -341,10 +341,10 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad):
             # print("y", pryb-pry)
             if (prxb-prx) != dx or (pryb-pry) != dy:
                 plt.text(prxb, pryb, '({},{})'.format(prxb, pryb))
-                guided_lat = int((pryb+381405)*10)
-                guided_lon = int((prxb-764354)*10)
+                guided_lat = int((pryb+381405)*1000)
+                guided_lon = int((prxb-764354)*1000)
                 write_wp(row_num, guided_lat, guided_lon)  # Write CSV file
-                print((pryb+381405)*10, (prxb-764354)*10)
+                print((pryb+381405)*1000, (prxb-764354)*1000)
                 row_num += 1
             dx = prxb-prx
             dy = pryb-pry
