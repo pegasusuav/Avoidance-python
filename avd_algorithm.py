@@ -258,25 +258,20 @@ def get_motion_model():
 
 
 # TODO: Write wp function and make it count point number quantity
-def write_wp(s_row):
-    while True:
-        row = ['2', '-35.3633251', '149.1623021']
+def write_wp(num,lat,lon):
+    row = [str(num), str(lat), str(lon)]
 
-        with open('new_point.csv', 'r') as readFile:
-            reader = csv.DictReader(readFile)
-
+    with open('new_point_test.csv', 'r') as readFile:
+        reader = csv.reader(readFile)
         lines = list(reader)
-        print(lines)
-        lines[s_row] = row
-        readFile.close()    
-        
-        with open('new_point.csv', 'w') as writeFile:
-            writer = csv.DictWriter(writeFile)
-            writer.writerows(lines)
+        lines[int(num)] = row
 
-        writeFile.close()
-        print('Planning done\n')
-        return
+    with open('new_point_test.csv', 'w', newline = '') as writeFile:
+        writer = csv.writer(writeFile)
+        writer.writerows(lines)
+
+    readFile.close()
+    writeFile.close()
 
 
 #  Manual plot testing function
