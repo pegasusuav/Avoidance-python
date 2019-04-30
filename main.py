@@ -133,8 +133,8 @@ def gps_data(the_connection):
             # Armed = MAV_STATE_STANDBY (4), Disarmed = MAV_STATE_ACTIVE (3)
             # print("\nLatitude: %s" % msg.lat)
             # print("\nLongitude: %s" % msg.lon)
-            ref_lat = msg.lat / 10000000
-            ref_lon = msg.lon / 10000000
+            ref_lat = msg.lat
+            ref_lon = msg.lon
             return ref_lat, ref_lon
 
 
@@ -169,8 +169,8 @@ def flyto(go_lat, go_lon, the_connection):
         the_connection.target_component,  # target_component
         6,  # coordinate_frame--> Use home alt as reference alt
         65528,  # type_mask
-        int(go_lat * 10000000),  # lat_int
-        int(go_lon * 10000000),  # lon_int
+        int(go_lat),  # lat_int
+        int(go_lon),  # lon_int
         30.0,  # alt
         0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)  # unused param
     time.sleep(1)
@@ -181,9 +181,8 @@ def flyto(go_lat, go_lon, the_connection):
 def wp_reached(go_lat, go_lon, the_connection):
     while True:
         cur_lat, cur_lon = gps_data(the_connection)
-        distance = Haversine((cur_lon, cur_lat), (go_lon, go_lat)).meters
+        distance = Haversine((cur_lon/10000000, cur_lat/10000000), (go_lon, go_lat)).meters  # /10000000 for convert int to float
         print(distance)
-        # time.sleep(1)
         if not distance <= 4:  # FIXME: <------- wp_reached offset
             continue
         return
@@ -217,7 +216,7 @@ def obstacle_dis(obs_lat, obs_lon, obs_rad, the_connection):
     while True:    
         cur_lat, cur_lon = gps_data(the_connection)  # Check current position
         # Check distance between current position and obstacle (minus obstacle radius to make obstacle shield)
-        distance = Haversine((cur_lon, cur_lat), (obs_lon, obs_lat)).meters
+        distance = Haversine((cur_lon/10000000, cur_lat/10000000), (obs_lon, obs_lat)).meters  # /10000000 for convert int to float 
         print('Obstacle distance = %f' % distance)
         # time.sleep(0.5)
         if distance <= 40 + obs_rad:  # FIXME: <------- obstacle distance offset
@@ -240,8 +239,8 @@ def get_wp(the_connection):
             # Armed = MAV_STATE_STANDBY (4), Disarmed = MAV_STATE_ACTIVE (3)
             # print("\nLatitude: %s" % msg.lat)
             # print("\nLongitude: %s" % msg.lon)
-            wp_lat = msg.lat_int / 10000000  # convert int32 to 7 decimal points value
-            wp_lon = msg.lon_int / 10000000
+            wp_lat = msg.lat_int
+            wp_lon = msg.lon_int
             return wp_lat, wp_lon
 
 
