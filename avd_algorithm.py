@@ -323,10 +323,11 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad):
     # rx, ry = a_star_planning(sx, sy, gx, gy, ox, oy, grid_size, robot_size)
     rx, ry = dijkstra_planning(sx, sy, gx, gy, ox, oy, grid_size, robot_size)
 
+# TODO: Realtime ploting
 # Remove the comment in the rows that have "plt" in it to observe the plot graph
 # ---------------------------------------------------------------------------------------
     if show_animation:  # pragma: no cover
-        # plt.plot(rx, ry, "-r")
+        plt.plot(rx, ry, "-r")
         prxb = int(rx[0])
         pryb = int(ry[0])
         if prxb == wp_lon:
@@ -339,6 +340,7 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad):
             # print("P", prx,pry)
             # print("x", prxb-prx)
             # print("y", pryb-pry)
+            # TODO: Make the output points have more decimal
             if (prxb-prx) != dx or (pryb-pry) != dy:
                 plt.text(prxb, pryb, '({},{})'.format(prxb, pryb))
                 guided_lat = int((pryb+381405)*1000)
@@ -350,22 +352,22 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad):
             dy = pryb-pry
             prxb = prx
             pryb = pry
-        # plt.plot(ox, oy, ".k")
-        # plt.plot(sx, sy, "xr")
-        # plt.plot(gx, gy, "xb")
+        plt.plot(ox, oy, ".k")
+        plt.plot(sx, sy, "xr")
+        plt.plot(gx, gy, "xb")
         # plt.show()
         total_point = count() - 1
         return total_point
 # --------------------------------------------------------------------------------------------
 
 
-if __name__ == '__main__':
-    ref_lat = 381497980
-    ref_lon = -764280940
-    wp_lat = 381482960
-    wp_lon = -764315630
-    obs_lat = 38.146444
-    obs_lon = -76.429821
-    obs_rad = 35.0
-    total = begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad)
-    print(total)
+# if __name__ == '__main__':
+#     ref_lat = 381497980
+#     ref_lon = -764280940
+#     wp_lat = 381482960
+#     wp_lon = -764315630
+#     obs_lat = 38.146444
+#     obs_lon = -76.429821
+#     obs_rad = 35.0
+#     total = begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad)
+#     print(total)
