@@ -1,25 +1,39 @@
 import csv
 import time
 
-def write_wp(s_row):
-    while True:
-        row = ['2', 'A', 'B']
 
-        with open('new_point_test.csv', 'r') as readFile:
-            reader = csv.reader(readFile)
+def write_wp(num,lat,lon):
+    row = [str(num), str(lat), str(lon)]
 
+    with open('new_point_test.csv', 'r') as readFile:
+        reader = csv.reader(readFile)
         lines = list(reader)
-        print(lines)
-        lines[s_row] = row
-        readFile.close()    
-        
-        with open('new_point_test.csv', 'w') as writeFile:
-            writer = csv.writer(writeFile)
-            writer.writerows(lines)
+        lines[int(num)] = row
 
-        writeFile.close()
-        print('Planning done\n')
-        return
+    with open('new_point_test.csv', 'w', newline = '') as writeFile:
+        writer = csv.writer(writeFile)
+        writer.writerows(lines)
+
+    readFile.close()
+    writeFile.close()
+
+# while True:
+#     lat = input("Lat = ")
+#     lon = input("Lon = ")
+#     start_row = input("Ros = ")
+#     write_wp(start_row,lat,lon)
+#     # start_row += 1
+
+def write():
+    csvData = [['No', 'Lat', 'Lon'], ['1', '35.111', '76.222'], ['2', '35.555', '76.222'], ['3', '35.444', '76.222']]
+
+    with open('new_point_test.csv', 'w', newline='') as csvFile:
+        writer = csv.writer(csvFile)
+        writer.writerows(csvData)
+
+    csvFile.close()
+
+write()
 
 
 def update_obs():
@@ -41,10 +55,10 @@ def update_obs():
                     continue
 
 
-while True:
-    # start_row = 1
-    # write_wp(start_row)
-    # start_row += 1
-    obs_lat, obs_lon, obs_rad = update_obs()
-    print('Lat = %f\nLon = %f\nRad = %f\n' % (obs_lat, obs_lon, obs_rad))
-    time.sleep(1)
+# while True:
+#     start_row = 1
+#     write_wp(start_row)
+#     start_row += 1
+    # obs_lat, obs_lon, obs_rad = update_obs()
+    # print('Lat = %f\nLon = %f\nRad = %f\n' % (obs_lat, obs_lon, obs_rad))
+    # time.sleep(1)
