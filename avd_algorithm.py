@@ -275,7 +275,12 @@ def write_wp(num,lat,lon):
     writeFile.close()
 
 
-# Count total point quantity
+# Count total point quantity function
+def count():
+    filename = "new_point.csv"
+    with open(filename) as f:
+        return sum(1 for line in f)
+
 
 # Manual plot testing function
 def testing():
@@ -321,7 +326,7 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad):
 #  find waypoint printing part
 # ---------------------------------------------------------------------------------------
     if show_animation:  # pragma: no cover
-        plt.plot(rx, ry, "-r")
+        # plt.plot(rx, ry, "-r")
         prxb = int(rx[0])
         pryb = int(ry[0])
         if prxb == wp_lon:
@@ -345,11 +350,12 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad):
             dy = pryb-pry
             prxb = prx
             pryb = pry
-        plt.plot(ox, oy, ".k")
-        plt.plot(sx, sy, "xr")
-        plt.plot(gx, gy, "xb")
-        plt.show()
-
+        # plt.plot(ox, oy, ".k")
+        # plt.plot(sx, sy, "xr")
+        # plt.plot(gx, gy, "xb")
+        # plt.show()
+        total_point = count() - 1
+        return total_point
 # --------------------------------------------------------------------------------------------
 
 
@@ -361,4 +367,5 @@ if __name__ == '__main__':
     obs_lat = 38.146444
     obs_lon = -76.429821
     obs_rad = 35.0
-    begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad)
+    total = begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad)
+    print(total)
