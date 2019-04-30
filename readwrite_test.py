@@ -3,26 +3,57 @@ import time
 
 
 def write_wp(num,lat,lon):
-    row = [str(num), str(lat), str(lon)]
+    head = [["No.", "Lat", "Lon"]]
+    row = [[str(num), str(lat), str(lon)]]
+    if int(num) == 1:
+        with open('new_point_test.csv', 'w', newline = '') as writeFile:
+            writer = csv.writer(writeFile)
+            writer.writerows(head)
+            writer.writerows(row)
+    else:
+        with open('new_point_test.csv', 'a', newline = '') as writeFile:
+            writer = csv.writer(writeFile)
+            writer.writerows(row)
 
-    with open('new_point_test.csv', 'r') as readFile:
-        reader = csv.reader(readFile)
-        lines = list(reader)
-        lines[int(num)] = row
-
-    with open('new_point_test.csv', 'w', newline = '') as writeFile:
-        writer = csv.writer(writeFile)
-        writer.writerows(lines)
-
-    readFile.close()
     writeFile.close()
+
+while True:
+    lat = input("Lat = ")
+    lon = input("Lon = ")
+    input_row = input("Row = ")
+    write_wp(input_row, lat, lon)
+
+
+def new_way(lat, lon, input_row):
+    file = open("new_point_test.csv", 'r')
+    newFile = []
+    idNum = input_row
+    for line in file:
+        data = line.split(",")
+        if data[0] == idNum:
+            newLat = int(lat)
+            newLon = int(lon)
+            newLine = "%s, %s, %s\n" % (data[0], newLat, newLon)
+            newFile.append(newLine)
+
+        else:
+            newFile.append(line)
+    file.close()
+
+    file = open("new_point_test.csv", 'w')
+
+    for line in newFile:
+        file.write(line)
+    
+    file.close()
+
 
 # while True:
 #     lat = input("Lat = ")
 #     lon = input("Lon = ")
-#     start_row = input("Ros = ")
-#     write_wp(start_row,lat,lon)
-#     # start_row += 1
+#     input_row = input("Row = ")
+#     new_way(lat, lon, input_row)
+#     #write_wp(input_row,lat,lon)
 
 def write():
     csvData = [['No', 'Lat', 'Lon'], ['1', '35.111', '76.222'], ['2', '35.555', '76.222'], ['3', '35.444', '76.222']]
@@ -33,7 +64,7 @@ def write():
 
     csvFile.close()
 
-write()
+#  write()
 
 
 def update_obs():
