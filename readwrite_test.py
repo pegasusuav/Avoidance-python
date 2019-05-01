@@ -17,15 +17,15 @@ def write_wp(num,lat,lon):
 
     writeFile.close()
 
-while True:
-    lat = input("Lat = ")
-    lon = input("Lon = ")
-    input_row = input("Row = ")
-    write_wp(input_row, lat, lon)
+# while True:
+#     lat = input("Lat = ")
+#     lon = input("Lon = ")
+#     input_row = input("Row = ")
+#     write_wp(input_row, lat, lon)
 
 
 def new_way(lat, lon, input_row):
-    file = open("new_point_test.csv", 'r')
+    file = open("new_point_test.csv", 'r+')
     newFile = []
     idNum = input_row
     for line in file:
@@ -70,26 +70,33 @@ def write():
 def update_obs():
     while True:
         # Read the obstacle.csv file and store Lat,Lon,Radius in variables
-        with open('obstacle.csv') as obstacle_read:
+        with open('obstacle.csv', 'r+') as obstacle_read:
             reader = csv.DictReader(obstacle_read)
-            # while True:
-            for row in reader:
-                # Check the existence of obstacle
-                if row['No.'] != "":
-                    obs_lat = float(row['Lat'])
-                    obs_lon = float(row['Lon'])
-                    obs_rad = float(row['Radius'])
-                    return obs_lat, obs_lon, obs_rad
-                else:
-                    print("No obstacle found")
-                    time.sleep(1)
-                    continue
+            while True:
+                for row in reader:
+                    if row['No.'] != ' ':  # Check the existence of obstacle
+                        obs_lat = float(row['Lat'])
+                        obs_lon = float(row['Lon'])
+                        obs_rad = float(row['Radius'])
+                        obstacle_read.close()
+                        return obs_lat, obs_lon, obs_rad
+                    else:
+                        print("No obstacle detect")
+                        obstacle_read.close()
+                        time.sleep(1)
+                        break
+                    break
+                break
+        obstacle_read.close()
 
 
-# while True:
+while True:
 #     start_row = 1
 #     write_wp(start_row)
 #     start_row += 1
     # obs_lat, obs_lon, obs_rad = update_obs()
     # print('Lat = %f\nLon = %f\nRad = %f\n' % (obs_lat, obs_lon, obs_rad))
     # time.sleep(1)
+    obs_lat, obs_lon, obs_rad = update_obs()
+    print('obs_lat = %f\nobs_lon = %f\nobs_rad = %f\n' % (obs_lat, obs_lon, obs_rad))
+    

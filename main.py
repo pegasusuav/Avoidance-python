@@ -143,7 +143,7 @@ def gps_data(the_connection):
 #########################
 # Read the new_point.csv file and get new waypoint coordinate
 def get_guided_wp(select_row):
-    with open('new_point.csv') as newpoint_read:
+    with open('new_point.csv', 'r+') as newpoint_read:
         reader = csv.DictReader(newpoint_read)
         for row in reader:
             if int(row['No.']) == select_row:
@@ -189,14 +189,14 @@ def wp_reached(go_lat, go_lon, the_connection):
         # if distance <= 0.25:
         #     return
 
-
+# TODO: Can detect only one obstacle
 ##########################
 # Update obstacle module #
 ##########################
 def update_obs():
     while True:
         # Read the obstacle.csv file and store Lat,Lon,Radius in variables
-        with open('obstacle.csv') as obstacle_read:
+        with open('obstacle.csv', 'r+') as obstacle_read:
             reader = csv.DictReader(obstacle_read)
             while True:
                 for row in reader:
@@ -204,13 +204,16 @@ def update_obs():
                         obs_lat = float(row['Lat'])
                         obs_lon = float(row['Lon'])
                         obs_rad = float(row['Radius'])
+                        obstacle_read.close()
                         return obs_lat, obs_lon, obs_rad
                     else:
                         print("No obstacle detect")
+                        obstacle_read.close()
                         time.sleep(1)
                         break
                     break
                 break
+        obstacle_read.close()
 
 
 ###################################
@@ -219,14 +222,14 @@ def update_obs():
 def obstacle_dis(obs_lat, obs_lon, obs_rad, the_connection):  
     while True:
         cur_lat, cur_lon = gps_data(the_connection)  # Check current position
-        obs_lat1, obs_lon1, obs_rad1 = update_obs() # Check that this obstacle is the same TODO: realtime update obstacle
-        if obs_lat != obs_lat1 or obs_lon != obs_lon1 or obs_rad != obs_rad1:
-            return
+        # obs_lat1, obs_lon1, obs_rad1 = update_obs() # Check that this obstacle is the same TODO: realtime update obstacle
+        # if obs_lat != obs_lat1 or obs_lon != obs_lon1 or obs_rad != obs_rad1:
+        #     return
         # Check distance between current position and obstacle (minus obstacle radius to make obstacle shield)
         distance = Haversine((cur_lon/10000000, cur_lat/10000000), (obs_lon, obs_lat)).meters  # /10000000 for convert int to float 
         print('Obstacle distance = %f' % distance)
         # time.sleep(0.5)
-        if distance <= 40.0 + obs_rad:  # FIXME: <------- obstacle distance offset
+        if distance <= 40.0 + obs_rad:  # FIXME: <------- should be adjust by vehicle velocity and object rad
             return distance
 
 
@@ -268,10 +271,10 @@ def main():
             ref_lat, ref_lon = gps_data(the_connection)  # Update last position
             wp_lat, wp_lon = get_wp(the_connection)  # Update last waypoint
             # Run the algorithm
-            avd_algorithm.begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad)
+            #avd_algorithm.begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad)
             # total_point = avd_algorithm.testing()
             distance = obstacle_dis(obs_lat, obs_lon, obs_rad, the_connection)  # Check obstacle distance
-            if distance <= 40 + obs_rad:  # FIXME: <------- obstacle distance offset
+            if distance <= 40.0 + obs_rad:  # FIXME: <------- should be adjust by vehicle velocity and object rad
                 break
         obs_lat, obs_lon, obs_rad = update_obs()  # Update obstacle status
         ref_lat, ref_lon = gps_data(the_connection)  # Update last position
@@ -280,8 +283,8 @@ def main():
         # If obstacle distance is below 40 meters the guiding procedure will begin
         print("Obstacle in range\nBegin obstacle avoidance")
         print("----> Done change %s mode\n" % change_mode('GUIDED', the_connection))  # Change mode to GUIDED
-        select_row = total_point
-        while select_row != 1: # Delete the same destination waypoint
+        select_row = total_point - 1
+        while select_row != 0: # Delete the same destination waypoint
             print("Guiding...")
             go_lat, go_lon, select_row = get_guided_wp(select_row)  # Fly to new waypoint in sequence
             flyto(go_lat, go_lon, the_connection)  # Guided to lat,lon point
