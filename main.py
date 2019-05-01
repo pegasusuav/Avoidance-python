@@ -183,7 +183,7 @@ def wp_reached(go_lat, go_lon, the_connection):
         cur_lat, cur_lon = gps_data(the_connection)
         distance = Haversine((cur_lon/10000000, cur_lat/10000000), (int(go_lon)/10000000, int(go_lat)/10000000)).meters  # /10000000 for convert int to float
         print(distance)
-        if not distance <= 4:  # FIXME: <------- wp_reached offset
+        if not distance <= 8:  # FIXME: <------- wp_reached offset
             continue
         return
         # if distance <= 0.25:
@@ -268,16 +268,20 @@ def main():
             ref_lat, ref_lon = gps_data(the_connection)  # Update last position
             wp_lat, wp_lon = get_wp(the_connection)  # Update last waypoint
             # Run the algorithm
-            total_point = avd_algorithm.begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad)
+            avd_algorithm.begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad)
             # total_point = avd_algorithm.testing()
             distance = obstacle_dis(obs_lat, obs_lon, obs_rad, the_connection)  # Check obstacle distance
             if distance <= 40 + obs_rad:  # FIXME: <------- obstacle distance offset
                 break
+        obs_lat, obs_lon, obs_rad = update_obs()  # Update obstacle status
+        ref_lat, ref_lon = gps_data(the_connection)  # Update last position
+        wp_lat, wp_lon = get_wp(the_connection)  # Update last waypoint
+        total_point = avd_algorithm.begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad)
         # If obstacle distance is below 40 meters the guiding procedure will begin
         print("Obstacle in range\nBegin obstacle avoidance")
         print("----> Done change %s mode\n" % change_mode('GUIDED', the_connection))  # Change mode to GUIDED
-        select_row = 1
-        while select_row <= total_point - 1: # Delete the same destination waypoint
+        select_row = total_point
+        while select_row != 1: # Delete the same destination waypoint
             print("Guiding...")
             go_lat, go_lon, select_row = get_guided_wp(select_row)  # Fly to new waypoint in sequence
             flyto(go_lat, go_lon, the_connection)  # Guided to lat,lon point
