@@ -4,7 +4,8 @@
 import matplotlib.pyplot as plt
 import math
 import csv
-import pandas as pd
+import cython
+import time
 
 """
 Created on Thu Apr 25 10:30:42 2019
@@ -289,7 +290,9 @@ def testing():
 
 
 # All input
+cython
 def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad):
+    start_time = time.time()
     # start and goal position
     sx = ((ref_lon/10000000)+76.4354)*10000  # [m] current positions
     sy = ((ref_lat/10000000)-38.1405)*10000  # [m]
@@ -299,7 +302,7 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad):
     robot_size = 3.0  # [m]
 
     ox, oy = [], []
-    r = obs_rad  # [m] obstacle radius
+    r = obs_rad/30.0  # [m] obstacle radius
     steps = 30  # [degrees]
     (cx, cy) = [(obs_lon+76.4354)*10000, (obs_lat-38.1405)*10000]  # [m] center of obstacle
     ox.append(cx)
@@ -355,8 +358,11 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad):
         plt.plot(ox, oy, ".k")
         plt.plot(sx, sy, "xr")
         plt.plot(gx, gy, "xb")
-        # plt.show()
+        # plt.draw()
+        plt.pause(0.05)
+        plt.show(block=False)
         total_point = count() - 1
+        print("--- %s seconds ---" % (time.time() - start_time))
         return total_point
 # --------------------------------------------------------------------------------------------
 
