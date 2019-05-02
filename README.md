@@ -6,7 +6,7 @@ This code was create for the SUAS2019 challenge propose.
 
 #### File description
 ```
-- main.py					The main script.
+- main.py				The main script.
 - avd_algorithm.py			The avoidance algorithm script.
 - arm_disarm.py				Testing MAVlink communication by send arm/disarm command. 
 - avoid.py				Script use for test the avoidance algorithm.
