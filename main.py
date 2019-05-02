@@ -8,7 +8,7 @@ from pymavlink import mavutil
 """
 Created on Thu Apr 25 19:30:42 2019
 
-@author: Zulu
+@author: Nuttawat Punpigul
 """
 
 """
