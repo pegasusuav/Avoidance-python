@@ -72,7 +72,7 @@ class Haversine:
         self.miles = self.meters * 0.000621371  # output distance in miles
         self.feet = self.miles * 5280  # output distance in feet
 
-        
+
 ######################
 # Mode change module #
 ######################
@@ -182,7 +182,8 @@ def flyto(go_lat, go_lon, the_connection):
 def wp_reached(go_lat, go_lon, the_connection):
     while True:
         cur_lat, cur_lon = gps_data(the_connection)
-        distance = Haversine((cur_lon/10000000, cur_lat/10000000), (int(go_lon)/10000000, int(go_lat)/10000000)).meters
+        distance = Haversine((cur_lon / 10000000, cur_lat / 10000000),
+                             (int(go_lon) / 10000000, int(go_lat) / 10000000)).meters
         # /10000000 for convert int to float
         # print(distance)
         if not distance <= 8:  # FIXME: <------- wp_reached offset
@@ -221,12 +222,12 @@ def update_obs():
 ###################################
 # Update obstacle distance module #
 ###################################
-def obstacle_dis(obs_lat, obs_lon, obs_rad, the_connection):  
+def obstacle_dis(obs_lat, obs_lon, obs_rad, the_connection):
     while True:
         cur_lat, cur_lon = gps_data(the_connection)  # Check current position
-        obs_lat, obs_lon, obs_rad = update_obs() # Check that this obstacle is the same TODO: realtime update obstacle
+        obs_lat, obs_lon, obs_rad = update_obs()  # Check that this obstacle is the same TODO: realtime update obstacle
         # Check distance between current position and obstacle (minus obstacle radius to make obstacle shield)
-        distance = Haversine((cur_lon/10000000, cur_lat/10000000), (obs_lon, obs_lat)).meters
+        distance = Haversine((cur_lon / 10000000, cur_lat / 10000000), (obs_lon, obs_lat)).meters
         # /10000000 for convert int to float
         # if obs_lat != obs_lat1 or obs_lon != obs_lon1 or obs_rad != obs_rad1:
         #     return distance
@@ -258,7 +259,6 @@ def get_wp(the_connection):
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
-cython
 def main():
     # Start a connection listening to a UDP port
     the_connection = mavutil.mavlink_connection('udpin:0.0.0.0:14550')
@@ -275,7 +275,7 @@ def main():
             ref_lat, ref_lon = gps_data(the_connection)  # Update last position
             wp_lat, wp_lon = get_wp(the_connection)  # Update last waypoint
             # Run the algorithm
-            #avd_algorithm.begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad)
+            # avd_algorithm.begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad)
             # total_point = avd_algorithm.testing()
             distance = obstacle_dis(obs_lat, obs_lon, obs_rad, the_connection)  # Check obstacle distance
             if distance <= 60.0 + obs_rad:  # FIXME: <------- should be adjust by vehicle velocity and object rad
@@ -288,7 +288,7 @@ def main():
         print("Obstacle in range\nBegin obstacle avoidance")
         print("----> Done change %s mode\n" % change_mode('GUIDED', the_connection))  # Change mode to GUIDED
         select_row = total_point
-        while select_row > 1: # Delete the same destination waypoint
+        while select_row > 1:  # Delete the same destination waypoint
             if select_row == 0:
                 break
             print("Guiding...")

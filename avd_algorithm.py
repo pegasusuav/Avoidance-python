@@ -188,12 +188,11 @@ def dijkstra_planning(sx, sy, gx, gy, ox, oy, reso, rr):
 
 def calc_heuristic(n1, n2):
     w = 1.0  # weight of heuristic
-    d = w * math.sqrt((n1.x - n2.x)**2 + (n1.y - n2.y)**2)
+    d = w * math.sqrt((n1.x - n2.x) ** 2 + (n1.y - n2.y) ** 2)
     return d
 
 
 def verify_node(node, obmap, minx, miny, maxx, maxy):
-
     if node.x < minx:
         return False
     elif node.y < miny:
@@ -210,7 +209,6 @@ def verify_node(node, obmap, minx, miny, maxx, maxy):
 
 
 def calc_obstacle_map(ox, oy, reso, vr):
-
     minx = round(min(ox))
     miny = round(min(oy))
     maxx = round(max(ox))
@@ -233,7 +231,7 @@ def calc_obstacle_map(ox, oy, reso, vr):
             y = iy + miny
             #  print(x, y)
             for iox, ioy in zip(ox, oy):
-                d = math.sqrt((iox - x)**2 + (ioy - y)**2)
+                d = math.sqrt((iox - x) ** 2 + (ioy - y) ** 2)
                 if d <= vr / reso:
                     obmap[ix][iy] = True
                     break
@@ -260,16 +258,16 @@ def get_motion_model():
 
 
 # Write wp function
-def write_wp(num,lat,lon):
+def write_wp(num, lat, lon):
     head = [["No.", "Lat", "Lon"]]
     row = [[str(num), str(lat), str(lon)]]
     if int(num) == 1:
-        with open('new_point.csv', 'w', newline = '') as writeFile:
+        with open('new_point.csv', 'w', newline='') as writeFile:
             writer = csv.writer(writeFile)
             writer.writerows(head)
             writer.writerows(row)
     else:
-        with open('new_point.csv', 'a', newline = '') as writeFile:
+        with open('new_point.csv', 'a', newline='') as writeFile:
             writer = csv.writer(writeFile)
             writer.writerows(row)
 
@@ -290,26 +288,25 @@ def testing():
 
 
 # All input
-cython
 def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad):
     start_time = time.time()
     # start and goal position
-    sx = ((ref_lon/10000000)+76.4354)*10000  # [m] current positions
-    sy = ((ref_lat/10000000)-38.1405)*10000  # [m]
-    gx = ((wp_lon/10000000)+76.4354)*10000  # [m] next waypoints
-    gy = ((wp_lat/10000000)-38.1405)*10000   # [m]
+    sx = ((ref_lon / 10000000) + 76.4354) * 10000  # [m] current positions
+    sy = ((ref_lat / 10000000) - 38.1405) * 10000  # [m]
+    gx = ((wp_lon / 10000000) + 76.4354) * 10000  # [m] next waypoints
+    gy = ((wp_lat / 10000000) - 38.1405) * 10000  # [m]
     grid_size = 5  # [m]
     robot_size = 3.0  # [m]
 
     ox, oy = [], []
-    r = obs_rad/30.0  # [m] obstacle radius
+    r = obs_rad / 30.0  # [m] obstacle radius
     steps = 30  # [degrees]
-    (cx, cy) = [(obs_lon+76.4354)*10000, (obs_lat-38.1405)*10000]  # [m] center of obstacle
+    (cx, cy) = [(obs_lon + 76.4354) * 10000, (obs_lat - 38.1405) * 10000]  # [m] center of obstacle
     ox.append(cx)
     oy.append(cy)
     for i in range(0, 360, steps):
-        ox.append(cx+(r*math.cos(i)))
-        oy.append(cy+(r*math.sin(i)))
+        ox.append(cx + (r * math.cos(i)))
+        oy.append(cy + (r * math.sin(i)))
     for i in range(143):
         ox.append(i)
         oy.append(142.0)
@@ -326,9 +323,9 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad):
     # rx, ry = a_star_planning(sx, sy, gx, gy, ox, oy, grid_size, robot_size)
     rx, ry = dijkstra_planning(sx, sy, gx, gy, ox, oy, grid_size, robot_size)
 
-# TODO: Realtime ploting
-# Remove the comment in the rows that have "plt" in it to observe the plot graph
-# ---------------------------------------------------------------------------------------
+    # TODO: Realtime ploting
+    # Remove the comment in the rows that have "plt" in it to observe the plot graph
+    # ---------------------------------------------------------------------------------------
     if show_animation:  # pragma: no cover
         plt.plot(rx, ry, "-r")
         prxb = int(rx[0])
@@ -344,15 +341,15 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad):
             # print("x", prxb-prx)
             # print("y", pryb-pry)
             # TODO: Make the output points have more decimal
-            if (prxb-prx) != dx or (pryb-pry) != dy:
+            if (prxb - prx) != dx or (pryb - pry) != dy:
                 plt.text(prxb, pryb, '({},{})'.format(prxb, pryb))
-                guided_lat = int((pryb+381405)*1000)
-                guided_lon = int((prxb-764354)*1000)
+                guided_lat = int((pryb + 381405) * 1000)
+                guided_lon = int((prxb - 764354) * 1000)
                 write_wp(row_num, guided_lat, guided_lon)  # Write CSV file
-                print((pryb+381405)*1000, (prxb-764354)*1000)
+                print((pryb + 381405) * 1000, (prxb - 764354) * 1000)
                 row_num += 1
-            dx = prxb-prx
-            dy = pryb-pry
+            dx = prxb - prx
+            dy = pryb - pry
             prxb = prx
             pryb = pry
         plt.plot(ox, oy, ".k")
