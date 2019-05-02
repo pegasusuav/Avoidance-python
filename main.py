@@ -2,7 +2,6 @@ import csv
 import math
 import avd_algorithm
 import time
-import cython
 from pymavlink import mavutil
 
 """
@@ -222,10 +221,10 @@ def update_obs():
 ###################################
 # Update obstacle distance module #
 ###################################
-def obstacle_dis(obs_lat, obs_lon, obs_rad, the_connection):
+def obstacle_dis(the_connection):
     while True:
         cur_lat, cur_lon = gps_data(the_connection)  # Check current position
-        obs_lat, obs_lon, obs_rad = update_obs()  # Check that this obstacle is the same TODO: realtime update obstacle
+        obs_lat, obs_lon, obs_rad = update_obs()  # Check that the obstacle
         # Check distance between current position and obstacle (minus obstacle radius to make obstacle shield)
         distance = Haversine((cur_lon / 10000000, cur_lat / 10000000), (obs_lon, obs_lat)).meters
         # /10000000 for convert int to float
@@ -237,7 +236,7 @@ def obstacle_dis(obs_lat, obs_lon, obs_rad, the_connection):
             return distance
 
 
-# TODO: review this function, maybe use MISSION_CURRENT {seq : x} with waypoint.csv file is better choice
+# TODO: review this function, maybe using MISSION_CURRENT {seq : x} with waypoint.csv file is better choice
 ###########################################
 # Update current coordinate target module #
 ###########################################
@@ -270,20 +269,13 @@ def main():
           (the_connection.target_system, the_connection.target_component))
 
     while True:
-        while True:
-            obs_lat, obs_lon, obs_rad = update_obs()  # Update obstacle status
-            ref_lat, ref_lon = gps_data(the_connection)  # Update last position
-            wp_lat, wp_lon = get_wp(the_connection)  # Update last waypoint
-            # Run the algorithm
-            # avd_algorithm.begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad)
-            # total_point = avd_algorithm.testing()
-            distance = obstacle_dis(obs_lat, obs_lon, obs_rad, the_connection)  # Check obstacle distance
-            if distance <= 60.0 + obs_rad:  # FIXME: <------- should be adjust by vehicle velocity and object rad
-                break
         obs_lat, obs_lon, obs_rad = update_obs()  # Update obstacle status
+        obstacle_dis(the_connection)  # Check obstacle distance
         ref_lat, ref_lon = gps_data(the_connection)  # Update last position
         wp_lat, wp_lon = get_wp(the_connection)  # Update last waypoint
-        total_point = avd_algorithm.begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad)
+        # Run the algorithm
+        total_point = avd_algorithm.begin_avd(ref_lat, ref_lon, wp_lat, wp_lon)
+        # total_point = avd_algorithm.testing()
         # If obstacle distance is below 40 meters the guiding procedure will begin
         print("Obstacle in range\nBegin obstacle avoidance")
         print("----> Done change %s mode\n" % change_mode('GUIDED', the_connection))  # Change mode to GUIDED

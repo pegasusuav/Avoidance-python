@@ -4,7 +4,6 @@
 import matplotlib.pyplot as plt
 import math
 import csv
-import cython
 import time
 
 """
@@ -44,75 +43,6 @@ def calc_final_path(ngoal, closedset, reso):
         rx.append(n.x * reso)
         ry.append(n.y * reso)
         pind = n.pind
-
-    return rx, ry
-
-
-def a_star_planning(sx, sy, gx, gy, ox, oy, reso, rr):
-    """
-    gx: goal x position [m]
-    gx: goal x position [m]
-    ox: x position list of Obstacles [m]
-    oy: y position list of Obstacles [m]
-    reso: grid resolution [m]
-    rr: robot radius[m]
-    """
-
-    nstart = Node(round(sx / reso), round(sy / reso), 0.0, -1)
-    ngoal = Node(round(gx / reso), round(gy / reso), 0.0, -1)
-    ox = [iox / reso for iox in ox]
-    oy = [ioy / reso for ioy in oy]
-
-    obmap, minx, miny, maxx, maxy, xw, yw = calc_obstacle_map(ox, oy, reso, rr)
-
-    motion = get_motion_model()
-
-    openset, closedset = dict(), dict()
-    openset[calc_index(nstart, xw, minx, miny)] = nstart
-
-    while 1:
-        c_id = min(
-            openset, key=lambda o: openset[o].cost + calc_heuristic(ngoal, openset[o]))
-        current = openset[c_id]
-
-        # show graph
-        if show_animation:  # pragma: no cover
-            plt.plot(current.x * reso, current.y * reso, "xc")
-            if len(closedset.keys()) % 10 == 0:
-                plt.pause(0.001)
-
-        if current.x == ngoal.x and current.y == ngoal.y:
-            print("Find goal")
-            ngoal.pind = current.pind
-            ngoal.cost = current.cost
-            break
-
-        # Remove the item from the open set
-        del openset[c_id]
-        # Add it to the closed set
-        closedset[c_id] = current
-
-        # expand search grid based on motion model
-        for i, _ in enumerate(motion):
-            node = Node(current.x + motion[i][0],
-                        current.y + motion[i][1],
-                        current.cost + motion[i][2], c_id)
-            n_id = calc_index(node, xw, minx, miny)
-
-            if n_id in closedset:
-                continue
-
-            if not verify_node(node, obmap, minx, miny, maxx, maxy):
-                continue
-
-            if n_id not in openset:
-                openset[n_id] = node  # Discover a new node
-            else:
-                if openset[n_id].cost >= node.cost:
-                    # This path is the best until now. record it!
-                    openset[n_id] = node
-
-    rx, ry = calc_final_path(ngoal, closedset, reso)
 
     return rx, ry
 
@@ -213,15 +143,9 @@ def calc_obstacle_map(ox, oy, reso, vr):
     miny = round(min(oy))
     maxx = round(max(ox))
     maxy = round(max(oy))
-    #  print("minx:", minx)
-    #  print("miny:", miny)
-    #  print("maxx:", maxx)
-    #  print("maxy:", maxy)
 
     xwidth = int(round(maxx - minx))
     ywidth = int(round(maxy - miny))
-    #  print("xwidth:", xwidth)
-    #  print("ywidth:", ywidth)
 
     # obstacle map generation
     obmap = [[False for i in range(ywidth)] for i in range(xwidth)]
@@ -275,10 +199,21 @@ def write_wp(num, lat, lon):
 
 
 # Count total point quantity function
-def count():
-    filename = "new_point.csv"
+def count(filename):
     with open(filename) as f:
         return sum(1 for line in f)
+
+
+# Select obstacle
+def update_obs(select_row):
+    with open('obstacle.csv', 'r+') as newpoint_read:
+        reader = csv.DictReader(newpoint_read)
+        for row in reader:
+            if int(row['No.']) == select_row:
+                obs_lat = row['Lat']
+                obs_lon = row['Lon']
+                obs_rad = row['Radius']
+                return obs_lat, obs_lon, obs_rad
 
 
 # Manual plot testing function
@@ -288,42 +223,51 @@ def testing():
 
 
 # All input
-def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad):
+def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon):
     start_time = time.time()
     # start and goal position
-    sx = ((ref_lon / 10000000) + 76.4354) * 10000  # [m] current positions
-    sy = ((ref_lat / 10000000) - 38.1405) * 10000  # [m]
-    gx = ((wp_lon / 10000000) + 76.4354) * 10000  # [m] next waypoints
-    gy = ((wp_lat / 10000000) - 38.1405) * 10000  # [m]
+    sx = ((ref_lon/10000000)+76.4354)*10000  # [m] current positions
+    sy = ((ref_lat/10000000)-38.1405)*10000  # [m]
+    gx = ((wp_lon/10000000)+76.4354)*10000  # [m] next waypoints
+    gy = ((wp_lat/10000000)-38.1405)*10000  # [m]
     grid_size = 5  # [m]
     robot_size = 3.0  # [m]
-
+    # about obstacle
     ox, oy = [], []
-    r = obs_rad / 30.0  # [m] obstacle radius
+    cx, cy = [], []
+    r = []
     steps = 30  # [degrees]
-    (cx, cy) = [(obs_lon + 76.4354) * 10000, (obs_lat - 38.1405) * 10000]  # [m] center of obstacle
-    ox.append(cx)
-    oy.append(cy)
-    for i in range(0, 360, steps):
-        ox.append(cx + (r * math.cos(i)))
-        oy.append(cy + (r * math.sin(i)))
+    n = 0
+    obs_num = int(count("obstacle.csv"))
+    Total_Obs = obs_num - 1  # TODO: add count number of obstacle function
+    obs = 1
+    while obs <= Total_Obs:
+        obs_lat, obs_lon, obs_rad = update_obs(obs)  # get obstacle list
+        r.append(float(obs_rad) / 30.0)  # [m] obstacle radius
+        cx.append((float(obs_lon)+76.4354)*10000)
+        cy.append((float(obs_lat)-38.1405)*10000)
+        ox.append(cx[n])
+        oy.append(cy[n])
+        for i in range(0, 360, steps):
+            ox.append(cx[n] + (r[n] * math.cos(i)))
+            oy.append(cy[n] + (r[n] * math.sin(i)))
+        n += 1
+        obs += 1
     for i in range(143):
         ox.append(i)
         oy.append(142.0)
     for i in range(143):
         ox.append(0.0)
         oy.append(i)
-    # if show_animation:  # pragma: no cover
-    #     plt.plot(ox, oy, ".k")
-    #     plt.plot(sx, sy, "xr")
-    #     plt.plot(gx, gy, "xb")
-    #     plt.grid(True)
-    #     plt.axis("equal")
-
-    # rx, ry = a_star_planning(sx, sy, gx, gy, ox, oy, grid_size, robot_size)
+    if show_animation:  # pragma: no cover
+        plt.plot(ox, oy, ".k")
+        plt.plot(sx, sy, "xr")
+        plt.plot(gx, gy, "xb")
+        plt.grid(True)
+        plt.axis("equal")
     rx, ry = dijkstra_planning(sx, sy, gx, gy, ox, oy, grid_size, robot_size)
 
-    # TODO: Realtime ploting
+    # TODO: Realtime plotting
     # Remove the comment in the rows that have "plt" in it to observe the plot graph
     # ---------------------------------------------------------------------------------------
     if show_animation:  # pragma: no cover
@@ -337,16 +281,13 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad):
         dy = 0
         row_num = 1
         for prx, pry in zip(rx, ry):
-            # print("P", prx,pry)
-            # print("x", prxb-prx)
-            # print("y", pryb-pry)
             # TODO: Make the output points have more decimal
             if (prxb - prx) != dx or (pryb - pry) != dy:
                 plt.text(prxb, pryb, '({},{})'.format(prxb, pryb))
                 guided_lat = int((pryb + 381405) * 1000)
                 guided_lon = int((prxb - 764354) * 1000)
                 write_wp(row_num, guided_lat, guided_lon)  # Write CSV file
-                print((pryb + 381405) * 1000, (prxb - 764354) * 1000)
+                print((pryb+381405)*1000, (prxb-764354)*1000)
                 row_num += 1
             dx = prxb - prx
             dy = pryb - pry
@@ -358,19 +299,17 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad):
         # plt.draw()
         plt.pause(0.05)
         plt.show(block=False)
-        total_point = count() - 1
+        total_point = count("new_point.csv") - 1
         print("--- %s seconds ---" % (time.time() - start_time))
         return total_point
 # --------------------------------------------------------------------------------------------
 
 
-# if __name__ == '__main__':
-#     ref_lat = 381497980
-#     ref_lon = -764280940
-#     wp_lat = 381482960
-#     wp_lon = -764315630
-#     obs_lat = 38.146444
-#     obs_lon = -76.429821
-#     obs_rad = 35.0
-#     total = begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, obs_lat, obs_lon, obs_rad)
-#     print(total)
+# Testing zone
+if __name__ == '__main__':
+    ref_lat = 381435000
+    ref_lon = -764250000
+    wp_lat = 381495000
+    wp_lon = -764265000
+    total = begin_avd(ref_lat, ref_lon, wp_lat, wp_lon)
+    print(total)
