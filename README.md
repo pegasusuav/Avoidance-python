@@ -17,4 +17,5 @@ This code was create for the SUAS2019 challenge propose.
 - new_point.csv				Store the guided waypoints in this file.
 - new_point_test.csv		        Store testing waypoints in this file.
 - obstacle.csv				Store the obstacle coordinate in this file.
+- Figure_1.png      Example picture from the avoidance algorithm.
 ```
