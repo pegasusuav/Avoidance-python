@@ -16,7 +16,7 @@ Avoidance system for static cylindrical shape obstacle during AUTO mission
 The system use MAVLink protocol to send MAVmsg direct to the UAV via MAVProxy GCS
 
 The MAVLink protocol is hosted under the governance of the Dronecode Project.
-See Wikipedia article (https://mavlink.io/en/mavgen_python/)
+See Wiki article (https://mavlink.io/en/mavgen_python/)
 """
 
 
@@ -43,13 +43,13 @@ See Wikipedia article (https://mavlink.io/en/mavgen_python/)
 # Haversine class #
 ###################
 class Haversine:
-    '''
+    """
     use the haversine class to calculate the distance between
     two lon/lat coordinate pairs.
     output distance available in kilometers, meters, miles, and feet.
     example usage: Haversine([lon1,lat1],[lon2,lat2]).feet
 
-    '''
+    """
 
     def __init__(self, coord1, coord2):
         lon1, lat1 = coord1
@@ -182,13 +182,15 @@ def flyto(go_lat, go_lon, the_connection):
 def wp_reached(go_lat, go_lon, the_connection):
     while True:
         cur_lat, cur_lon = gps_data(the_connection)
-        distance = Haversine((cur_lon/10000000, cur_lat/10000000), (int(go_lon)/10000000, int(go_lat)/10000000)).meters  # /10000000 for convert int to float
+        distance = Haversine((cur_lon/10000000, cur_lat/10000000), (int(go_lon)/10000000, int(go_lat)/10000000)).meters
+        # /10000000 for convert int to float
         # print(distance)
         if not distance <= 8:  # FIXME: <------- wp_reached offset
             continue
         return
         # if distance <= 0.25:
         #     return
+
 
 # TODO: Can detect only one obstacle
 ##########################
@@ -212,7 +214,6 @@ def update_obs():
                         obstacle_read.close()
                         time.sleep(1)
                         break
-                    break
                 break
         obstacle_read.close()
 
@@ -225,7 +226,8 @@ def obstacle_dis(obs_lat, obs_lon, obs_rad, the_connection):
         cur_lat, cur_lon = gps_data(the_connection)  # Check current position
         obs_lat, obs_lon, obs_rad = update_obs() # Check that this obstacle is the same TODO: realtime update obstacle
         # Check distance between current position and obstacle (minus obstacle radius to make obstacle shield)
-        distance = Haversine((cur_lon/10000000, cur_lat/10000000), (obs_lon, obs_lat)).meters  # /10000000 for convert int to float 
+        distance = Haversine((cur_lon/10000000, cur_lat/10000000), (obs_lon, obs_lat)).meters
+        # /10000000 for convert int to float
         # if obs_lat != obs_lat1 or obs_lon != obs_lon1 or obs_rad != obs_rad1:
         #     return distance
         print('Obstacle distance = %f' % distance)
