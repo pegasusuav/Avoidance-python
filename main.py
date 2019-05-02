@@ -196,23 +196,25 @@ def wp_reached(go_lat, go_lon, the_connection):
 ##########################
 # Update obstacle module #
 ##########################
-def update_obs():
+def update_obs(select_row):
     while True:
         # Read the obstacle.csv file and store Lat,Lon,Radius in variables
+        with open('obstacle.csv') as f:
+            count_obs = sum(1 for line in f) - 1
         with open('obstacle.csv', 'r+') as obstacle_read:
             reader = csv.DictReader(obstacle_read)
             while True:
                 for row in reader:
-                    if row['No.'] != ' ':  # Check the existence of obstacle
+                    if int(row['No.']) == select_row:  # Check the existence of obstacle
                         obs_lat = float(row['Lat'])
                         obs_lon = float(row['Lon'])
                         obs_rad = float(row['Radius'])
                         obstacle_read.close()
-                        return obs_lat, obs_lon, obs_rad
-                    else:
+                        return obs_lat, obs_lon, obs_rad, count_obs
+                    elif int(row['No.']) == 0:
                         print("No obstacle detect")
                         obstacle_read.close()
-                        time.sleep(1)
+                        # time.sleep(1)
                         break
                 break
         obstacle_read.close()
@@ -222,18 +224,28 @@ def update_obs():
 # Update obstacle distance module #
 ###################################
 def obstacle_dis(the_connection):
+    start_time = time.time()
     while True:
-        cur_lat, cur_lon = gps_data(the_connection)  # Check current position
-        obs_lat, obs_lon, obs_rad = update_obs()  # Check that the obstacle
-        # Check distance between current position and obstacle (minus obstacle radius to make obstacle shield)
-        distance = Haversine((cur_lon / 10000000, cur_lat / 10000000), (obs_lon, obs_lat)).meters
-        # /10000000 for convert int to float
-        # if obs_lat != obs_lat1 or obs_lon != obs_lon1 or obs_rad != obs_rad1:
-        #     return distance
-        print('Obstacle distance = %f' % distance)
-        # time.sleep(0.5)
-        if distance <= 60.0 + obs_rad:  # FIXME: <------- should be adjust by vehicle velocity and object rad
-            return distance
+        distance = []
+        row = 1
+        while True:
+            cur_lat, cur_lon = gps_data(the_connection)  # Check current position
+            obs_lat, obs_lon, obs_rad, count_obs = update_obs(row)  # Check that the obstacle
+            # Check distance between current position and obstacle shield
+            distance.append(Haversine((cur_lon / 10000000, cur_lat / 10000000), (obs_lon, obs_lat)).meters)
+            # /10000000 for convert int to float
+            # if obs_lat != obs_lat1 or obs_lon != obs_lon1 or obs_rad != obs_rad1:
+            #     return distance
+            # print('Obstacle distance = %f' % distance[row])
+            # time.sleep(0.5)
+            row += 1
+            if row > count_obs:
+                min_dist = min(distance)
+                print('Obstacle distance = %f (--- %s seconds ---)' % (min_dist, (time.time() - start_time)))
+                if min_dist <= 60.0 + obs_rad:  # FIXME: <------- should be adjust by vehicle velocity and object rad
+                    return min_dist
+                else:
+                    break
 
 
 # TODO: review this function, maybe using MISSION_CURRENT {seq : x} with waypoint.csv file is better choice
@@ -269,7 +281,7 @@ def main():
           (the_connection.target_system, the_connection.target_component))
 
     while True:
-        obs_lat, obs_lon, obs_rad = update_obs()  # Update obstacle status
+        # obs_lat, obs_lon, obs_rad = update_obs()  # Update obstacle status
         obstacle_dis(the_connection)  # Check obstacle distance
         ref_lat, ref_lon = gps_data(the_connection)  # Update last position
         wp_lat, wp_lon = get_wp(the_connection)  # Update last waypoint

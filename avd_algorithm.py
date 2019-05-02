@@ -230,7 +230,7 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon):
     sy = ((ref_lat/10000000)-38.1405)*10000  # [m]
     gx = ((wp_lon/10000000)+76.4354)*10000  # [m] next waypoints
     gy = ((wp_lat/10000000)-38.1405)*10000  # [m]
-    grid_size = 5  # [m]
+    grid_size = 6  # [m]
     robot_size = 3.0  # [m]
     # about obstacle
     ox, oy = [], []
@@ -306,10 +306,10 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon):
 
 
 # Testing zone
-if __name__ == '__main__':
-    ref_lat = 381435000
-    ref_lon = -764250000
-    wp_lat = 381495000
-    wp_lon = -764265000
-    total = begin_avd(ref_lat, ref_lon, wp_lat, wp_lon)
-    print(total)
+# if __name__ == '__main__':
+#     ref_lat = 381435000
+#     ref_lon = -764250000
+#     wp_lat = 381495000
+#     wp_lon = -764265000
+#     total = begin_avd(ref_lat, ref_lon, wp_lat, wp_lon)
+#     print(total)
