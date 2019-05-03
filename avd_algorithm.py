@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import matplotlib.pyplot as plt
 import math
 import csv
 import time
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+from matplotlib import style
 
 """
 Created on Thu Apr 25 10:30:42 2019
@@ -271,6 +273,11 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon):
     # Remove the comment in the rows that have "plt" in it to observe the plot graph
     # ---------------------------------------------------------------------------------------
     if show_animation:  # pragma: no cover
+
+        plt.cla()
+        # fig = plt.figure()
+        # ax1 = fig.add_subplot(1,1,1)
+
         plt.plot(rx, ry, "-r")
         prxb = int(rx[0])
         pryb = int(ry[0])
@@ -297,6 +304,7 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon):
         plt.plot(sx, sy, "xr")
         plt.plot(gx, gy, "xb")
         # plt.draw()
+        # ax1.clear()
         plt.pause(0.05)
         plt.show(block=False)
         total_point = count("new_point.csv") - 1

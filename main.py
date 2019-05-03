@@ -31,7 +31,7 @@ See Wiki article (https://mavlink.io/en/mavgen_python/)
 # / if distance <= xx return avd_trigger
 # / switch mode to guided (fix the 'can't avoid obstacle in time' problem)
 # / call algorithm(obs_lat,obs_lon,obs_rad,ref_lat,ref_lon,the_connection)
-# - Edit avd_algorithm.py to create new_point
+# / Edit avd_algorithm.py to create new_point
 # / Fly to new waypoint
 # / check flyto reached (convert gps == flyto point)
 # / sent next flyto
@@ -72,9 +72,7 @@ class Haversine:
         self.feet = self.miles * 5280  # output distance in feet
 
 
-######################
-# Mode change module #
-######################
+# Mode change function
 def change_mode(modename, the_connection):
     # Choose a mode
     mode = modename
@@ -89,11 +87,6 @@ def change_mode(modename, the_connection):
     # Get mode ID
     mode_id = the_connection.mode_mapping()[mode]
     # Set new mode
-    # the_connection.mav.command_long_send(
-    #    the_connection.target_system, the_connection.target_component,
-    #    mavutil.mavlink.MAV_CMD_DO_SET_MODE, 0,
-    #    0, mode_id, 0, 0, 0, 0, 0) or:
-    # the_connection.set_mode(mode_id) or:
     the_connection.mav.set_mode_send(
         the_connection.target_system,
         mavutil.mavlink.MAV_MODE_FLAG_CUSTOM_MODE_ENABLED,
@@ -118,30 +111,20 @@ def change_mode(modename, the_connection):
     return modename
 
 
-########################
-# Read GPS data module #
-########################
+# Read GPS data function
 def gps_data(the_connection):
     while True:
         msg = the_connection.recv_match()
         if not msg:
             continue
         if msg.get_type() == 'GLOBAL_POSITION_INT':
-            # print("\n\n*****Got message: %s*****" % msg.get_type())
-            # print("Message: %s" % msg)
-            # print("\nAs dictionary: %s" % msg.to_dict())
-            # Armed = MAV_STATE_STANDBY (4), Disarmed = MAV_STATE_ACTIVE (3)
-            # print("\nLatitude: %s" % msg.lat)
-            # print("\nLongitude: %s" % msg.lon)
             ref_lat = msg.lat
             ref_lon = msg.lon
             return ref_lat, ref_lon
 
 
-#########################
-# Guide waypoint module #
-#########################
-# Read the new_point.csv file and get new waypoint coordinate
+# Guide waypoint function
+# Read the new_point.csv file and get new waypoints coordinate for avoidance guiding
 def get_guided_wp(select_row):
     with open('new_point.csv', 'r+') as newpoint_read:
         reader = csv.DictReader(newpoint_read)
@@ -162,7 +145,7 @@ def flyto(go_lat, go_lon, the_connection):
             continue
         if msg.get_type() == 'SYSTEM_TIME':
             break
-    # Begin position set
+    # Begin waypoint guiding
     the_connection.mav.set_position_target_global_int_send(
         msg.time_boot_ms,  # time_boot_ms
         the_connection.target_system,  # target_system
@@ -184,18 +167,12 @@ def wp_reached(go_lat, go_lon, the_connection):
         distance = Haversine((cur_lon / 10000000, cur_lat / 10000000),
                              (int(go_lon) / 10000000, int(go_lat) / 10000000)).meters
         # /10000000 for convert int to float
-        # print(distance)
         if not distance <= 8:  # FIXME: <------- wp_reached offset
             continue
         return
-        # if distance <= 0.25:
-        #     return
 
 
-# TODO: Can detect only one obstacle
-##########################
-# Update obstacle module #
-##########################
+# Update obstacle function
 def update_obs(select_row):
     while True:
         # Read the obstacle.csv file and store Lat,Lon,Radius in variables
@@ -214,33 +191,27 @@ def update_obs(select_row):
                     elif int(row['No.']) == 0:
                         print("No obstacle detect")
                         obstacle_read.close()
-                        # time.sleep(1)
                         break
                 break
         obstacle_read.close()
 
 
-###################################
-# Update obstacle distance module #
-###################################
+# Update obstacle distance function
 def obstacle_dis(the_connection):
-    start_time = time.time()
     while True:
+        start_time = time.time()  # Start time record
         distance = []
         row = 1
         while True:
+            # start_time = time.time()
             cur_lat, cur_lon = gps_data(the_connection)  # Check current position
-            obs_lat, obs_lon, obs_rad, count_obs = update_obs(row)  # Check that the obstacle
+            obs_lat, obs_lon, obs_rad, count_obs = update_obs(row)  # Get obstacle data
             # Check distance between current position and obstacle shield
             distance.append(Haversine((cur_lon / 10000000, cur_lat / 10000000), (obs_lon, obs_lat)).meters)
             # /10000000 for convert int to float
-            # if obs_lat != obs_lat1 or obs_lon != obs_lon1 or obs_rad != obs_rad1:
-            #     return distance
-            # print('Obstacle distance = %f' % distance[row])
-            # time.sleep(0.5)
             row += 1
             if row > count_obs:
-                min_dist = min(distance)
+                min_dist = min(distance)  # Get the nearest obstacle distance
                 print('Obstacle distance = %f (--- %s seconds ---)' % (min_dist, (time.time() - start_time)))
                 if min_dist <= 60.0 + obs_rad:  # FIXME: <------- should be adjust by vehicle velocity and object rad
                     return min_dist
@@ -249,21 +220,13 @@ def obstacle_dis(the_connection):
 
 
 # TODO: review this function, maybe using MISSION_CURRENT {seq : x} with waypoint.csv file is better choice
-###########################################
-# Update current coordinate target module #
-###########################################
+# Update current coordinate target function
 def get_wp(the_connection):
     while True:
         msg = the_connection.recv_match()
         if not msg:
             continue
         if msg.get_type() == 'POSITION_TARGET_GLOBAL_INT':
-            # print("\n\n*****Got message: %s*****" % msg.get_type())
-            # print("Message: %s" % msg)
-            # print("\nAs dictionary: %s" % msg.to_dict())
-            # Armed = MAV_STATE_STANDBY (4), Disarmed = MAV_STATE_ACTIVE (3)
-            # print("\nLatitude: %s" % msg.lat)
-            # print("\nLongitude: %s" % msg.lon)
             wp_lat = msg.lat_int
             wp_lon = msg.lon_int
             return wp_lat, wp_lon
@@ -281,22 +244,21 @@ def main():
           (the_connection.target_system, the_connection.target_component))
 
     while True:
-        # obs_lat, obs_lon, obs_rad = update_obs()  # Update obstacle status
-        obstacle_dis(the_connection)  # Check obstacle distance
-        ref_lat, ref_lon = gps_data(the_connection)  # Update last position
+        obstacle_dis(the_connection)  # Check the nearest obstacle distance
+        ref_lat, ref_lon = gps_data(the_connection)  # Update current position
         wp_lat, wp_lon = get_wp(the_connection)  # Update last waypoint
         # Run the algorithm
         total_point = avd_algorithm.begin_avd(ref_lat, ref_lon, wp_lat, wp_lon)
-        # total_point = avd_algorithm.testing()
-        # If obstacle distance is below 40 meters the guiding procedure will begin
+        # If obstacle distance is below 60 meters the guiding procedure will begin
         print("Obstacle in range\nBegin obstacle avoidance")
         print("----> Done change %s mode\n" % change_mode('GUIDED', the_connection))  # Change mode to GUIDED
-        select_row = total_point
+        select_row = total_point  # Due to the algorithm write new waypoints from the end to start, we need to select the last row as our first waypoint
         while select_row > 1:  # Delete the same destination waypoint
             if select_row == 0:
                 break
             print("Guiding...")
-            go_lat, go_lon, select_row = get_guided_wp(select_row)  # Fly to new waypoint in sequence
+            # Fly to new waypoint in sequence
+            go_lat, go_lon, select_row = get_guided_wp(select_row)  # Get new waypoint data  
             flyto(go_lat, go_lon, the_connection)  # Guided to lat,lon point
             wp_reached(go_lat, go_lon, the_connection)  # Check waypoint reached
         print("----> Done change %s mode" % change_mode('AUTO', the_connection))  # Change mode to AUTO
