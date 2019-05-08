@@ -227,11 +227,12 @@ def testing():
 # All input
 def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon):
     start_time = time.time()
+    scale = 10000 # x/y scale
     # start and goal position
-    sx = ((ref_lon/10000000)+76.4354)*10000  # [m] current positions
-    sy = ((ref_lat/10000000)-38.1405)*10000  # [m]
-    gx = ((wp_lon/10000000)+76.4354)*10000  # [m] next waypoints
-    gy = ((wp_lat/10000000)-38.1405)*10000  # [m]
+    sx = ((ref_lon/10000000)+76.4354)*scale  # [m] current positions
+    sy = ((ref_lat/10000000)-38.1405)*scale  # [m]
+    gx = ((wp_lon/10000000)+76.4354)*scale  # [m] next waypoints
+    gy = ((wp_lat/10000000)-38.1405)*scale  # [m]
     grid_size = 6  # [m]
     robot_size = 3.0  # [m]
     # about obstacle
@@ -246,8 +247,8 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon):
     while obs <= Total_Obs:
         obs_lat, obs_lon, obs_rad = update_obs(obs)  # get obstacle list
         r.append(float(obs_rad) / 30.0)  # [m] obstacle radius
-        cx.append((float(obs_lon)+76.4354)*10000)
-        cy.append((float(obs_lat)-38.1405)*10000)
+        cx.append((float(obs_lon)+76.4354)*scale)
+        cy.append((float(obs_lat)-38.1405)*scale)
         ox.append(cx[n])
         oy.append(cy[n])
         for i in range(0, 360, steps):
