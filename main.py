@@ -1,6 +1,6 @@
 import csv
 import math
-import avd_algorithm
+import avd_algorithm_rtafa
 import time
 from pymavlink import mavutil
 
@@ -15,11 +15,11 @@ Avoidance system for static cylindrical shape obstacle during AUTO mission
 The system use MAVLink protocol to send MAVmsg direct to the UAV via MAVProxy GCS
 
 The MAVLink protocol is hosted under the governance of the Dronecode Project.
-See Wiki article (https://mavlink.io/en/mavgen_python/)
+See Wiki article (https://mavlink.io)
 """
 
 
-# TODO: List
+# TODO: List ----> avd_algorithm.csv,obstacle.csv,min_dist(- obs_rad)
 #  **** every coordinate points that will be write in the csv file must have 7 decimals only ****
 # - add mission complete check function
 # - add AUTO mode check function before allow the script to continue
@@ -154,7 +154,7 @@ def flyto(go_lat, go_lon, the_connection):
         65528,  # type_mask
         int(go_lat),  # lat_int
         int(go_lon),  # lon_int
-        30.0,  # alt
+        10.0,  # alt
         0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)  # unused param
     # time.sleep(1)
     return
@@ -167,7 +167,7 @@ def wp_reached(go_lat, go_lon, the_connection):
         distance = Haversine((cur_lon / 10000000, cur_lat / 10000000),
                              (int(go_lon) / 10000000, int(go_lat) / 10000000)).meters
         # /10000000 for convert int to float
-        if not distance <= 8:  # FIXME: <------- wp_reached offset
+        if not distance <= 1:  # FIXME: <------- wp_reached offset (5)
             continue
         return
 
@@ -175,10 +175,10 @@ def wp_reached(go_lat, go_lon, the_connection):
 # Update obstacle function
 def update_obs(select_row):
     while True:
-        # Read the obstacle.csv file and store Lat,Lon,Radius in variables
-        with open('obstacle.csv') as f:
+        # Read the obstacle_rtafa.csv file and store Lat,Lon,Radius in variables
+        with open('obstacle_rtafa.csv') as f:
             count_obs = sum(1 for line in f) - 1
-        with open('obstacle.csv', 'r+') as obstacle_read:
+        with open('obstacle_rtafa.csv', 'r+') as obstacle_read:
             reader = csv.DictReader(obstacle_read)
             while True:
                 for row in reader:
@@ -213,7 +213,7 @@ def obstacle_dis(the_connection):
             if row > count_obs:
                 min_dist = min(distance)  # Get the nearest obstacle distance
                 print('Obstacle distance = %f (--- %s seconds ---)' % (min_dist, (time.time() - start_time)))
-                if min_dist <= 60.0 + obs_rad:  # FIXME: <------- should be adjust by vehicle velocity and object rad
+                if min_dist <= 15.0 :  # FIXME: <------- should be adjust by vehicle velocity and object rad (60.0 - obs_rad)
                     return min_dist
                 else:
                     break
@@ -239,7 +239,7 @@ def main():
 
     # Wait for the first heartbeat
     #   This sets the system and component ID of remote system for the link
-    the_connection.wait_heartbeat()
+    the_connection.wait_heartbeat(timeout=10)
     print("Heartbeat from system (system %u component %u)" %
           (the_connection.target_system, the_connection.target_component))
 
@@ -248,7 +248,7 @@ def main():
         ref_lat, ref_lon = gps_data(the_connection)  # Update current position
         wp_lat, wp_lon = get_wp(the_connection)  # Update last waypoint
         # Run the algorithm
-        total_point = avd_algorithm.begin_avd(ref_lat, ref_lon, wp_lat, wp_lon)
+        total_point = avd_algorithm_rtafa.begin_avd(ref_lat, ref_lon, wp_lat, wp_lon)
         # If obstacle distance is below 60 meters the guiding procedure will begin
         print("Obstacle in range\nBegin obstacle avoidance")
         print("----> Done change %s mode\n" % change_mode('GUIDED', the_connection))  # Change mode to GUIDED
