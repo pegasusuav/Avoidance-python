@@ -5,8 +5,6 @@ import math
 import csv
 import time
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-from matplotlib import style
 
 """
 Created on Thu Apr 25 10:30:42 2019
@@ -227,14 +225,16 @@ def testing():
 # All input
 def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon):
     start_time = time.time()
-    scale = 100000 # x/y scale
+    scale = 100000  # x/y scale
+    ref_fence_lon = 100.77626
+    ref_fence_lat = 13.89443
     # start and goal position
-    sx = ((ref_lon/10000000)-100.62812)*scale  # [m] current positions
-    sy = ((ref_lat/10000000)-13.91818)*scale  # [m]
-    gx = ((wp_lon/10000000)-100.62812)*scale  # [m] next waypoints
-    gy = ((wp_lat/10000000)-13.91818)*scale  # [m]
-    grid_size = 3.5  # [m]
-    robot_size = 3.0  # [m]
+    sx = ((ref_lon / 10000000) - ref_fence_lon) * scale  # [m] current positions
+    sy = ((ref_lat / 10000000) - ref_fence_lat) * scale  # [m]
+    gx = ((wp_lon / 10000000) - ref_fence_lon) * scale  # [m] next waypoints
+    gy = ((wp_lat / 10000000) - ref_fence_lat) * scale  # [m]
+    grid_size = 9  # [m]
+    robot_size = 9.0  # [m]
     # about obstacle
     ox, oy = [], []
     cx, cy = [], []
@@ -242,13 +242,13 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon):
     steps = 30  # [degrees]
     n = 0
     obs_num = int(count("obstacle_rtafa.csv"))
-    Total_Obs = obs_num - 1  # TODO: add count number of obstacle function
+    Total_Obs = obs_num - 1  # Count number of obstacle
     obs = 1
     while obs <= Total_Obs:
         obs_lat, obs_lon, obs_rad = update_obs(obs)  # get obstacle list
         r.append(float(obs_rad) / 30.0)  # [m] obstacle radius
-        cx.append((float(obs_lon)-100.62812)*scale)
-        cy.append((float(obs_lat)-13.91818)*scale)
+        cx.append((float(obs_lon) - ref_fence_lon) * scale)
+        cy.append((float(obs_lat) - ref_fence_lat) * scale)
         ox.append(cx[n])
         oy.append(cy[n])
         for i in range(0, 360, steps):
@@ -289,13 +289,12 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon):
         dy = 0
         row_num = 1
         for prx, pry in zip(rx, ry):
-            # TODO: Make the output points have more decimal
             if (prxb - prx) != dx or (pryb - pry) != dy:
                 plt.text(prxb, pryb, '({},{})'.format(prxb, pryb))
-                guided_lat = int((pryb + 1391818) * 100)
-                guided_lon = int((prxb + 10062812) * 100)
+                guided_lat = int((pryb + (ref_fence_lat * 100000)) * 100)
+                guided_lon = int((prxb + (ref_fence_lon * 100000)) * 100)
                 write_wp(row_num, guided_lat, guided_lon)  # Write CSV file
-                print((pryb+1391818)/100000, (prxb+10062812)/100000)
+                print((pryb + (ref_fence_lat * 100000)) / 100000, (prxb + (ref_fence_lon * 100000)) / 100000)
                 row_num += 1
             dx = prxb - prx
             dy = pryb - pry
