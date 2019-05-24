@@ -93,21 +93,21 @@ def change_mode(modename, the_connection):
         mode_id)
 
     # Check ACK
-    ack = False
-    while not ack:
-        # Wait for ACK command
-        ack_msg = the_connection.recv_match(type='COMMAND_ACK', blocking=True)
-        ack_msg = ack_msg.to_dict()
+    # ack = False
+    # while not ack:
+    #     # Wait for ACK command
+    #     ack_msg = the_connection.recv_match(type='COMMAND_ACK', blocking=True)
+    #     ack_msg = ack_msg.to_dict()
 
-        # Check if command in the same in `set_mode`
-        print("\nChanging %s mode" % modename)
-        if ack_msg['command'] != mavutil.mavlink.MAVLINK_MSG_ID_SET_MODE:
-            continue
+    #     # Check if command in the same in `set_mode`
+    #     print("\nChanging %s mode" % modename)
+    #     if ack_msg['command'] != mavutil.mavlink.MAVLINK_MSG_ID_SET_MODE:
+    #         continue
 
-        # Print the ACK result !
-        result = mavutil.mavlink.enums['MAV_RESULT'][ack_msg['result']].description
-        print("--> %s" % result)
-        break
+    #     # Print the ACK result !
+    #     result = mavutil.mavlink.enums['MAV_RESULT'][ack_msg['result']].description
+    #     print("--> %s" % result)
+    #     break
     return modename
 
 
@@ -172,6 +172,7 @@ def wp_reached(go_lat, go_lon, the_connection):
         return
 
 
+# TODO: check for non using param
 # Update obstacle function
 def update_obs(select_row):
     while True:
@@ -219,7 +220,6 @@ def obstacle_dis(the_connection):
                     break
 
 
-# TODO: review this function, maybe using MISSION_CURRENT {seq : x} with waypoint.csv file is better choice
 # Update current coordinate target function
 def get_wp(the_connection):
     while True:
@@ -239,7 +239,7 @@ def main():
 
     # Wait for the first heartbeat
     #   This sets the system and component ID of remote system for the link
-    the_connection.wait_heartbeat(timeout=10)
+    the_connection.wait_heartbeat()
     print("Heartbeat from system (system %u component %u)" %
           (the_connection.target_system, the_connection.target_component))
 
@@ -250,18 +250,20 @@ def main():
         # Run the algorithm
         total_point = avd_algorithm_rtafa.begin_avd(ref_lat, ref_lon, wp_lat, wp_lon)
         # If obstacle distance is below 60 meters the guiding procedure will begin
-        print("Obstacle in range\nBegin obstacle avoidance")
-        print("----> Done change %s mode\n" % change_mode('GUIDED', the_connection))  # Change mode to GUIDED
-        select_row = total_point  # Due to the algorithm write new waypoints from the end to start, we need to select the last row as our first waypoint
-        while select_row > 1:  # Delete the same destination waypoint
-            if select_row == 0:
-                break
-            print("Guiding...")
-            # Fly to new waypoint in sequence
-            go_lat, go_lon, select_row = get_guided_wp(select_row)  # Get new waypoint data  
-            flyto(go_lat, go_lon, the_connection)  # Guided to lat,lon point
-            wp_reached(go_lat, go_lon, the_connection)  # Check waypoint reached
-        print("----> Done change %s mode" % change_mode('AUTO', the_connection))  # Change mode to AUTO
+        if total_point != 1:  # Prevent unnecessary mode changing
+            print("Obstacle in range\nBegin obstacle avoidance")
+            print("----> Done change %s mode\n" % change_mode('GUIDED', the_connection))  # Change mode to GUIDED
+            select_row = total_point  # Due to the algorithm write new waypoints from the end to start, we need to select
+            # the last row as our first waypoint
+            while select_row > 1:  # Delete the same destination waypoint
+                if select_row == 0:
+                    break
+                print("Guiding...")
+                # Fly to new waypoint in sequence
+                go_lat, go_lon, select_row = get_guided_wp(select_row)  # Get new waypoint data
+                flyto(go_lat, go_lon, the_connection)  # Guided to lat,lon point
+                wp_reached(go_lat, go_lon, the_connection)  # Check waypoint reached
+            print("----> Done change %s mode" % change_mode('AUTO', the_connection))  # Change mode to AUTO
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
