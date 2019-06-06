@@ -1,6 +1,9 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import csv
 import math
-import avd_algorithm_rtafa
+import avd_algorithm
 import time
 from pymavlink import mavutil
 
@@ -19,23 +22,10 @@ See Wiki article (https://mavlink.io)
 """
 
 
-# TODO: List ----> avd_algorithm.csv,obstacle.csv,min_dist(- obs_rad)
+# TODO: List ----> obstacle.csv,min_dist(- obs_rad)
 #  **** every coordinate points that will be write in the csv file must have 7 decimals only ****
 # - add mission complete check function
 # - add AUTO mode check function before allow the script to continue
-# / update obstacle status
-# / store obstacle var
-# / call get_gps function
-# / check obstacle distance (the Haversine formula)
-# / final distance = calc distance - obstacle_rad
-# / if distance <= xx return avd_trigger
-# / switch mode to guided (fix the 'can't avoid obstacle in time' problem)
-# / call algorithm(obs_lat,obs_lon,obs_rad,ref_lat,ref_lon,the_connection)
-# / Edit avd_algorithm.py to create new_point
-# / Fly to new waypoint
-# / check flyto reached (convert gps == flyto point)
-# / sent next flyto
-# / switch mode back to AUTO
 
 
 ###################
@@ -154,7 +144,7 @@ def flyto(go_lat, go_lon, the_connection):
         65528,  # type_mask
         int(go_lat),  # lat_int
         int(go_lon),  # lon_int
-        10.0,  # alt
+        30.0,  # alt
         0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)  # unused param
     # time.sleep(1)
     return
@@ -166,10 +156,10 @@ def wp_reached(go_lat, go_lon, the_connection):
         cur_lat, cur_lon = gps_data(the_connection)
         distance = Haversine((cur_lon / 10000000, cur_lat / 10000000),
                              (int(go_lon) / 10000000, int(go_lat) / 10000000)).meters
+        print(distance)
         # /10000000 for convert int to float
-        if not distance <= 1:  # FIXME: <------- wp_reached offset (5)
-            continue
-        return
+        if distance <= 5:  # wp_reached offset (5)
+            return
 
 
 # TODO: check for non using param
@@ -186,7 +176,7 @@ def update_obs(select_row):
                     if int(row['No.']) == select_row:  # Check the existence of obstacle
                         obs_lat = float(row['Lat'])
                         obs_lon = float(row['Lon'])
-                        obs_rad = float(row['Radius'])
+                        obs_rad = (float(row['Radius'])) + 10.0
                         obstacle_read.close()
                         return obs_lat, obs_lon, obs_rad, count_obs
                     elif int(row['No.']) == 0:
@@ -203,9 +193,8 @@ def obstacle_dis(the_connection):
         start_time = time.time()  # Start time record
         distance = []
         row = 1
+        cur_lat, cur_lon = gps_data(the_connection)  # Check current position
         while True:
-            # start_time = time.time()
-            cur_lat, cur_lon = gps_data(the_connection)  # Check current position
             obs_lat, obs_lon, obs_rad, count_obs = update_obs(row)  # Get obstacle data
             # Check distance between current position and obstacle shield
             distance.append(Haversine((cur_lon / 10000000, cur_lat / 10000000), (obs_lon, obs_lat)).meters)
@@ -213,8 +202,8 @@ def obstacle_dis(the_connection):
             row += 1
             if row > count_obs:
                 min_dist = min(distance)  # Get the nearest obstacle distance
-                print('Obstacle distance = %f (--- %s seconds ---)' % (min_dist, (time.time() - start_time)))
-                if min_dist <= 15.0 :  # FIXME: <------- should be adjust by vehicle velocity and object rad (60.0 - obs_rad)
+                print('Closest obstacle distance = %f (--- %s seconds ---)' % (min_dist, (time.time() - start_time)))
+                if min_dist <= 60.0:  # FIXME: <------- should be adjust by vehicle velocity and object rad (60.0 + obs_rad)
                     return min_dist
                 else:
                     break
@@ -248,11 +237,11 @@ def main():
         ref_lat, ref_lon = gps_data(the_connection)  # Update current position
         wp_lat, wp_lon = get_wp(the_connection)  # Update last waypoint
         # Run the algorithm
-        total_point = avd_algorithm_rtafa.begin_avd(ref_lat, ref_lon, wp_lat, wp_lon)
+        total_point = avd_algorithm.begin_avd(ref_lat, ref_lon, wp_lat, wp_lon)
         # If obstacle distance is below 60 meters the guiding procedure will begin
         if total_point != 1:  # Prevent unnecessary mode changing
-            print("Obstacle in range\nBegin obstacle avoidance")
-            print("----> Done change %s mode\n" % change_mode('GUIDED', the_connection))  # Change mode to GUIDED
+            print("\nObstacle in range\nBegin obstacle avoidance")
+            print("\nChange to %s mode\n" % change_mode('GUIDED', the_connection))  # Change mode to GUIDED
             select_row = total_point  # Due to the algorithm write new waypoints from the end to start, we need to select
             # the last row as our first waypoint
             while select_row > 1:  # Delete the same destination waypoint
@@ -263,7 +252,7 @@ def main():
                 go_lat, go_lon, select_row = get_guided_wp(select_row)  # Get new waypoint data
                 flyto(go_lat, go_lon, the_connection)  # Guided to lat,lon point
                 wp_reached(go_lat, go_lon, the_connection)  # Check waypoint reached
-            print("----> Done change %s mode" % change_mode('AUTO', the_connection))  # Change mode to AUTO
+            print("\nChange to %s mode\n" % change_mode('AUTO', the_connection))  # Change mode to AUTO
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
