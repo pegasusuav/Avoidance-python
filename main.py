@@ -166,19 +166,18 @@ def wp_reached(go_lat, go_lon, the_connection):
 # Update obstacle function
 def update_obs(select_row):
     while True:
-        # Read the obstacle_rtafa.csv file and store Lat,Lon,Radius in variables
-        with open('obstacle_rtafa.csv') as f:
+        # Read the obstacle_minirc.csv file and store Lat,Lon,Radius in variables
+        with open('obstacle_minirc.csv') as f:
             count_obs = sum(1 for line in f) - 1
-        with open('obstacle_rtafa.csv', 'r+') as obstacle_read:
+        with open('obstacle_minirc.csv', 'r+') as obstacle_read:
             reader = csv.DictReader(obstacle_read)
             while True:
                 for row in reader:
                     if int(row['No.']) == select_row:  # Check the existence of obstacle
                         obs_lat = float(row['Lat'])
                         obs_lon = float(row['Lon'])
-                        obs_rad = (float(row['Radius'])) + 10.0
                         obstacle_read.close()
-                        return obs_lat, obs_lon, obs_rad, count_obs
+                        return obs_lat, obs_lon, count_obs
                     elif int(row['No.']) == 0:
                         print("No obstacle detect")
                         obstacle_read.close()
@@ -195,7 +194,7 @@ def obstacle_dis(the_connection):
         row = 1
         cur_lat, cur_lon = gps_data(the_connection)  # Check current position
         while True:
-            obs_lat, obs_lon, obs_rad, count_obs = update_obs(row)  # Get obstacle data
+            obs_lat, obs_lon, count_obs = update_obs(row)  # Get obstacle data
             # Check distance between current position and obstacle shield
             distance.append(Haversine((cur_lon / 10000000, cur_lat / 10000000), (obs_lon, obs_lat)).meters)
             # /10000000 for convert int to float
