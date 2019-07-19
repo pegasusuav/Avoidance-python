@@ -5,8 +5,7 @@ import math
 import csv
 import time
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-from matplotlib import style
+from pymavlink import mavutil
 
 """
 Created on Thu Apr 25 10:30:42 2019
@@ -15,10 +14,9 @@ Created on Thu Apr 25 10:30:42 2019
 """
 
 """
-A* grid based planning
-author: Atsushi Sakai(@Atsushi_twi)
-        Nikos Kanargias (nkana@tee.gr)
-See Wikipedia article (https://en.wikipedia.org/wiki/A*_search_algorithm)
+dijkstra grid based planning
+author: Edsger W. Dijkstra
+See Wikipedia article (https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm)
 """
 
 show_animation = True
@@ -208,7 +206,7 @@ def count(filename):
 
 # Select obstacle
 def update_obs(select_row):
-    with open('obstacle.csv', 'r+') as newpoint_read:
+    with open('obstacles.csv', 'r+') as newpoint_read:
         reader = csv.DictReader(newpoint_read)
         for row in reader:
             if int(row['No.']) == select_row:
@@ -217,38 +215,49 @@ def update_obs(select_row):
                 obs_rad = row['Radius']
                 return obs_lat, obs_lon, obs_rad
 
-
-# Manual plot testing function
-def testing():
-    total_point = 2
-    return total_point
+# Read GPS data function
+def gps_data(the_connection):
+    while True:
+        msg = the_connection.recv_match(type='GLOBAL_POSITION_INT', blocking=True)
+        ref_lat = msg.lat
+        ref_lon = msg.lon
+        return ref_lat, ref_lon
 
 
 # All input
-def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon):
+def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, the_connection):
     start_time = time.time()
-    scale = 10000 # x/y scale
+    ref_lat,ref_lon = gps_data(the_connection)
+    scale = 100000  # x/y scale
+
+    # ref_lat,lon,scale database
+    # RTAFA = 13.91818, 100.62812, 100000
+    # MiniRC = 13.89443, 100.77626, 100000
+    # NAS = 38.1405, -76.4354, 10000
+    
+    ref_fence_lon = 100.77626
+    ref_fence_lat = 13.89443
     # start and goal position
-    sx = ((ref_lon/10000000)+76.4354)*scale  # [m] current positions
-    sy = ((ref_lat/10000000)-38.1405)*scale  # [m]
-    gx = ((wp_lon/10000000)+76.4354)*scale  # [m] next waypoints
-    gy = ((wp_lat/10000000)-38.1405)*scale  # [m]
-    grid_size = 6  # [m]
-    robot_size = 3.0  # [m]
+    sx = ((ref_lon / 10000000) - ref_fence_lon) * scale  # [m] current positions
+    sy = ((ref_lat / 10000000) - ref_fence_lat) * scale  # [m]
+    gx = ((wp_lon / 10000000) - ref_fence_lon) * scale  # [m] next waypoints
+    gy = ((wp_lat / 10000000) - ref_fence_lat) * scale  # [m]
+    grid_size = 9  # [m]
+    robot_radius = 9.0  # [m]
     # about obstacle
     ox, oy = [], []
     cx, cy = [], []
     r = []
     steps = 30  # [degrees]
     n = 0
-    obs_num = int(count("obstacle.csv"))
-    Total_Obs = obs_num - 1  # TODO: add count number of obstacle function
+    obs_num = int(count("obstacles.csv"))
+    Total_Obs = obs_num - 1  # Count number of obstacle
     obs = 1
     while obs <= Total_Obs:
         obs_lat, obs_lon, obs_rad = update_obs(obs)  # get obstacle list
         r.append(float(obs_rad) / 30.0)  # [m] obstacle radius
-        cx.append((float(obs_lon)+76.4354)*scale)
-        cy.append((float(obs_lat)-38.1405)*scale)
+        cx.append((float(obs_lon) - ref_fence_lon) * scale)
+        cy.append((float(obs_lat) - ref_fence_lat) * scale)
         ox.append(cx[n])
         oy.append(cy[n])
         for i in range(0, 360, steps):
@@ -256,10 +265,10 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon):
             oy.append(cy[n] + (r[n] * math.sin(i)))
         n += 1
         obs += 1
-    for i in range(143):
+    for i in range(418):
         ox.append(i)
-        oy.append(142.0)
-    for i in range(143):
+        oy.append(417.0)
+    for i in range(418):
         ox.append(0.0)
         oy.append(i)
     if show_animation:  # pragma: no cover
@@ -268,17 +277,15 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon):
         plt.plot(gx, gy, "xb")
         plt.grid(True)
         plt.axis("equal")
-    rx, ry = dijkstra_planning(sx, sy, gx, gy, ox, oy, grid_size, robot_size)
 
+    rx, ry = dijkstra_planning(sx, sy, gx, gy, ox, oy, grid_size, robot_radius)
+    
     # TODO: Realtime plotting
     # Remove the comment in the rows that have "plt" in it to observe the plot graph
     # ---------------------------------------------------------------------------------------
     if show_animation:  # pragma: no cover
 
         plt.cla()
-        # fig = plt.figure()
-        # ax1 = fig.add_subplot(1,1,1)
-
         plt.plot(rx, ry, "-r")
         prxb = int(rx[0])
         pryb = int(ry[0])
@@ -289,13 +296,12 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon):
         dy = 0
         row_num = 1
         for prx, pry in zip(rx, ry):
-            # TODO: Make the output points have more decimal
             if (prxb - prx) != dx or (pryb - pry) != dy:
                 plt.text(prxb, pryb, '({},{})'.format(prxb, pryb))
-                guided_lat = int((pryb + 381405) * 1000)
-                guided_lon = int((prxb - 764354) * 1000)
+                guided_lat = int((pryb + (ref_fence_lat * 100000)) * 100)
+                guided_lon = int((prxb + (ref_fence_lon * 100000)) * 100)
                 write_wp(row_num, guided_lat, guided_lon)  # Write CSV file
-                print((pryb+381405)*1000, (prxb-764354)*1000)
+                print((pryb + (ref_fence_lat * 100000)) / 100000, (prxb + (ref_fence_lon * 100000)) / 100000)
                 row_num += 1
             dx = prxb - prx
             dy = pryb - pry
@@ -304,8 +310,7 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon):
         plt.plot(ox, oy, ".k")
         plt.plot(sx, sy, "xr")
         plt.plot(gx, gy, "xb")
-        # plt.draw()
-        # ax1.clear()
+        plt.draw()
         plt.pause(0.05)
         plt.show(block=False)
         total_point = count("new_point.csv") - 1
@@ -314,11 +319,12 @@ def begin_avd(ref_lat, ref_lon, wp_lat, wp_lon):
 # --------------------------------------------------------------------------------------------
 
 
-# Testing zone
+# # Testing zone
 # if __name__ == '__main__':
-#     ref_lat = 381435000
-#     ref_lon = -764250000
-#     wp_lat = 381495000
-#     wp_lon = -764265000
+#     ref_lat = 138953063
+#     ref_lon = 1007781780
+#     wp_lat = 138958895
+#     wp_lon = 1007778990
 #     total = begin_avd(ref_lat, ref_lon, wp_lat, wp_lon)
+#     # begin_avd(ref_lat, ref_lon, wp_lat, wp_lon)
 #     print(total)
