@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
 import csv
 import math
 import avd_algorithm
@@ -22,8 +21,8 @@ See Wiki article (https://mavlink.io)
 """
 
 
-# TODO: List ----> obstacle.csv,min_dist(- obs_rad)
-#  **** every coordinate points that will be write in the csv file must have 7 decimals only ****
+# TODO: List
+#  **** every coordinate points that writen in the csv file must have 7 decimals only ****
 # - add mission complete check function
 # - add AUTO mode check function before allow the script to continue
 
@@ -104,13 +103,11 @@ def change_mode(modename, the_connection):
 # Read GPS data function
 def gps_data(the_connection):
     while True:
-        msg = the_connection.recv_match()
-        if not msg:
-            continue
-        if msg.get_type() == 'GLOBAL_POSITION_INT':
-            ref_lat = msg.lat
-            ref_lon = msg.lon
-            return ref_lat, ref_lon
+        msg = the_connection.recv_match(type='GLOBAL_POSITION_INT', blocking=True)
+        ref_lat = msg.lat
+        ref_lon = msg.lon
+        ref_alt = msg.relative_alt
+        return ref_lat, ref_lon, ref_alt
 
 
 # Guide waypoint function
@@ -127,7 +124,7 @@ def get_guided_wp(select_row):
 
 
 # Guided to waypoint function
-def flyto(go_lat, go_lon, the_connection):
+def flyto(go_lat, go_lon, ref_alt, the_connection):
     # Loop for time_boot_ms parameter
     while True:
         msg = the_connection.recv_match()
@@ -144,7 +141,7 @@ def flyto(go_lat, go_lon, the_connection):
         65528,  # type_mask
         int(go_lat),  # lat_int
         int(go_lon),  # lon_int
-        30.0,  # alt
+        ref_alt,  # alt
         0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)  # unused param
     # time.sleep(1)
     return
@@ -153,7 +150,7 @@ def flyto(go_lat, go_lon, the_connection):
 # Check guided waypoint reached function
 def wp_reached(go_lat, go_lon, the_connection):
     while True:
-        cur_lat, cur_lon = gps_data(the_connection)
+        cur_lat, cur_lon, ref_alt = gps_data(the_connection)
         distance = Haversine((cur_lon / 10000000, cur_lat / 10000000),
                              (int(go_lon) / 10000000, int(go_lat) / 10000000)).meters
         print(distance)
@@ -166,10 +163,10 @@ def wp_reached(go_lat, go_lon, the_connection):
 # Update obstacle function
 def update_obs(select_row):
     while True:
-        # Read the obstacle_minirc.csv file and store Lat,Lon,Radius in variables
-        with open('obstacle_minirc.csv') as f:
+        # Read the obstacles.csv file and store Lat,Lon,Radius in variables
+        with open('obstacles.csv') as f:
             count_obs = sum(1 for line in f) - 1
-        with open('obstacle_minirc.csv', 'r+') as obstacle_read:
+        with open('obstacles.csv', 'r+') as obstacle_read:
             reader = csv.DictReader(obstacle_read)
             while True:
                 for row in reader:
@@ -187,12 +184,12 @@ def update_obs(select_row):
 
 
 # Update obstacle distance function
-def obstacle_dis(the_connection):
+def obstacle_dis(cur_lat, cur_lon, the_connection):
     while True:
         start_time = time.time()  # Start time record
         distance = []
         row = 1
-        cur_lat, cur_lon = gps_data(the_connection)  # Check current position
+        cur_lat, cur_lon, ref_alt = gps_data(the_connection)  # Check current position
         while True:
             obs_lat, obs_lon, count_obs = update_obs(row)  # Get obstacle data
             # Check distance between current position and obstacle shield
@@ -202,7 +199,7 @@ def obstacle_dis(the_connection):
             if row > count_obs:
                 min_dist = min(distance)  # Get the nearest obstacle distance
                 print('Closest obstacle distance = %f (--- %s seconds ---)' % (min_dist, (time.time() - start_time)))
-                if min_dist <= 60.0:  # FIXME: <------- should be adjust by vehicle velocity and object rad (60.0 + obs_rad)
+                if min_dist <= 50.0:  # FIXME: <------- should be adjust by vehicle velocity and object rad (60.0 + obs_rad)
                     return min_dist
                 else:
                     break
@@ -232,14 +229,15 @@ def main():
           (the_connection.target_system, the_connection.target_component))
 
     while True:
-        obstacle_dis(the_connection)  # Check the nearest obstacle distance
-        ref_lat, ref_lon = gps_data(the_connection)  # Update current position
+        ref_lat, ref_lon, ref_alt = gps_data(the_connection)  # Update current position
+        obstacle_dis(ref_lat, ref_lon, the_connection)  # Check the nearest obstacle distance
         wp_lat, wp_lon = get_wp(the_connection)  # Update last waypoint
         # Run the algorithm
-        total_point = avd_algorithm.begin_avd(ref_lat, ref_lon, wp_lat, wp_lon)
+        print("\nObstacle in range")
+        total_point = avd_algorithm.begin_avd(ref_lat, ref_lon, wp_lat, wp_lon, the_connection)
         # If obstacle distance is below 60 meters the guiding procedure will begin
         if total_point != 1:  # Prevent unnecessary mode changing
-            print("\nObstacle in range\nBegin obstacle avoidance")
+            print("Begin obstacle avoidance")
             print("\nChange to %s mode\n" % change_mode('GUIDED', the_connection))  # Change mode to GUIDED
             select_row = total_point  # Due to the algorithm write new waypoints from the end to start, we need to select
             # the last row as our first waypoint
@@ -249,9 +247,10 @@ def main():
                 print("Guiding...")
                 # Fly to new waypoint in sequence
                 go_lat, go_lon, select_row = get_guided_wp(select_row)  # Get new waypoint data
-                flyto(go_lat, go_lon, the_connection)  # Guided to lat,lon point
+                ref_lat, ref_lon, ref_alt = gps_data(the_connection)
+                flyto(go_lat, go_lon, ref_alt, the_connection)  # Guided to lat,lon point
                 wp_reached(go_lat, go_lon, the_connection)  # Check waypoint reached
-            print("\nChange to %s mode\n" % change_mode('AUTO', the_connection))  # Change mode to AUTO
+            print("Done\nChange to %s mode\n" % change_mode('AUTO', the_connection))  # Change mode to AUTO
 
 
 # ------------------------------------------------------------------------------------------------------------------- #
